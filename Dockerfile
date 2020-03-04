@@ -1,0 +1,1 @@
+FROM gotenberg:6
