@@ -1,3 +1,10 @@
+.PHONY: it
+	docker-compose up -d
+
+.PHONY: help
+help: ## Displays this list of targets with descriptions
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[32m%-30s\033[0m %s\n", $$1, $$2}'
+
 .PHONY: test
-test:
-	curl -X POST --data 'markdown=# Heading 2' --data 'css=h1 { color: blue; }' --output test.pdf localhost:8000
+test: ## Issue a dummy request against the API
+	./test.sh

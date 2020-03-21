@@ -3,18 +3,17 @@
 #[macro_use]
 extern crate rocket;
 
+#[macro_use]
+extern crate log;
+
 mod md_to_html;
 
 use md_to_html::md_to_html;
-use rocket::config::Environment;
 use rocket::request::Form;
 use rocket::response::{content, NamedFile};
-use rocket::Config;
-use std::fs::File;
 use std::io::{Error, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::str::FromStr;
 use tempfile::NamedTempFile;
 
 #[get("/")]
@@ -57,8 +56,9 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Error> {
         .arg("--pdf-engine=wkhtmltopdf")
         .stdin(stdin);
 
+    let mut css_file;
     if convert.css.is_some() {
-        let mut css_file = NamedTempFile::new()?;
+        css_file = NamedTempFile::new()?;
         css_file.write_all(convert.css.as_ref().unwrap().as_bytes())?;
         pandoc_builder.arg("--css=".to_owned() + css_file.path().to_str().unwrap());
     }
@@ -71,25 +71,18 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Error> {
     }
 
     let output = pandoc_process.wait_with_output()?;
-    println!("{:?}", output);
+    debug!("{:?}", output);
 
     NamedFile::open(Path::new("/tmp/markdown.pdf"))
 }
 
 fn main() {
+    // Heroku compatibility
     let port_string = std::env::var("PORT");
-    let port = match port_string {
-        Ok(p) => u16::from_str(p.as_str()),
-        Err(e) => Ok(8000),
+    match port_string {
+        Ok(p) => std::env::set_var("ROCKET_PORT", p),
+        Err(_e) => (),
     }
-    .expect("Invalid $PORT");
 
-    let config = Config::build(Environment::Production)
-        .address("0.0.0.0")
-        .port(port)
-        .finalize();
-
-    rocket::custom(config.expect(""))
-        .mount("/", routes![index, pandoc])
-        .launch();
+    rocket::ignite().mount("/", routes![index, pandoc]).launch();
 }
