@@ -1,2 +1,3 @@
 # md-to-pdf
-A simple tool for converting markdown to pdf
+
+An API service for converting markdown to PDF
