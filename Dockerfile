@@ -23,3 +23,5 @@ CMD ["md-to-pdf"]
 RUN useradd -m rocket
 USER rocket
 WORKDIR /home/rocket
+
+COPY static /home/rocket/static
