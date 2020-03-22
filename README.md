@@ -4,5 +4,6 @@ An API service for converting markdown to PDF
 
 ## Built with
 
-- [Rocket - Rust Web Framework](https://rocket.rs/)
-- [Codemirror - Text Editor for the browser](https://codemirror.net/)
+- [Rocket - a web framework for Rust](https://rocket.rs/)
+- [Codemirror - a text editor for the browser](https://codemirror.net/)
+- [Pandoc - a universal document converter](https://pandoc.org/)
