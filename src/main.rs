@@ -7,15 +7,14 @@ extern crate rocket;
 extern crate log;
 
 use core::fmt;
-use md_to_html::md_to_html;
 use rocket::request::Form;
-use rocket::response::{content, NamedFile};
+use rocket::response::NamedFile;
 use rocket_contrib::serve::StaticFiles;
 use std::fmt::{Display, Formatter};
 use std::io::{Error, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use tempfile::NamedTempFile;
+use tempfile::Builder;
 
 #[derive(FromFormValue)]
 enum PdfEngine {
@@ -43,20 +42,43 @@ struct ConvertForm {
 fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Error> {
     let mut pandoc_builder = Command::new("pandoc");
 
-    let stdin = Stdio::piped();
-    pandoc_builder.stdin(stdin);
+    // Pandoc can not perform PDF conversion to STDOUT, so we need a temp file
+    let pdf_temp_path = Builder::new()
+        // Setting that suffix accomplishes two things:
+        // - Pandoc will know that it should convert to PDF
+        // - Rocket will set the correct Content-Type response header
+        .suffix(".pdf")
+        .tempfile()?
+        .into_temp_path();
+    let pdf_path = pdf_temp_path
+        .to_str()
+        .expect("Can not deal with non UTF-8 path.");
+    pandoc_builder.arg("--output=".to_owned() + pdf_path);
 
-    pandoc_builder.arg("--output=/tmp/markdown.pdf");
+    pandoc_builder.arg(
+        "--pdf-engine=".to_owned()
+            + convert
+                .engine
+                .as_ref()
+                .unwrap_or(&PdfEngine::Weasyprint)
+                .to_string()
+                .as_str(),
+    );
 
-    let engine = convert.engine.as_ref().unwrap_or(&PdfEngine::Weasyprint);
-    pandoc_builder.arg("--pdf-engine=".to_owned() + engine.to_string().as_str());
-
+    // Declare outside of the if block to keep the file around until the end of this function if needed
     let mut css_file;
     if convert.css.is_some() {
-        css_file = NamedTempFile::new()?;
+        css_file = Builder::new()
+            // Necessary for weasyprint to recognize it as a proper stylesheet
+            .suffix(".css")
+            .tempfile()?;
         css_file.write_all(convert.css.as_ref().unwrap().as_bytes())?;
         pandoc_builder.arg("--css=".to_owned() + css_file.path().to_str().unwrap());
     }
+
+    // We can avoid writing the input to a file by streaming it to STDIN
+    let stdin = Stdio::piped();
+    pandoc_builder.stdin(stdin);
 
     let mut pandoc_process = pandoc_builder.spawn()?;
 
@@ -68,13 +90,12 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Error> {
     let output = pandoc_process.wait_with_output()?;
     debug!("{:?}", output);
 
-    NamedFile::open(Path::new("/tmp/markdown.pdf"))
+    NamedFile::open(Path::new(pdf_path))
 }
 
 fn main() {
     // Heroku compatibility
-    let port_string = std::env::var("PORT");
-    match port_string {
+    match std::env::var("PORT") {
         Ok(p) => std::env::set_var("ROCKET_PORT", p),
         Err(_e) => (),
     }
