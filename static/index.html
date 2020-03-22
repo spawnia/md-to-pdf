@@ -47,12 +47,12 @@
 <textarea id="markdown" class="markdown">
 # md-to-pdf
 
-An API service for converting markdown to PDF
+A web service for converting markdown to PDF
 
 ## Usage
 
-You can just paste your markdown right here (edit this text) and download a PDF
-right away.
+For quick experimentation, you can use the web version at [https://md-to-pdf.herokuapp.com/](https://md-to-pdf.herokuapp.com/).
+Just paste your markdown and download the converted PDF.
 
 ## API
 
@@ -69,6 +69,12 @@ Depending on what features you prefer and the output that works best, you can
 choose between two pdf conversion engines: `wkhtmltopdf` and `weasyprint`:
 
     curl -X POST -d 'markdown=# Heading 1' -d 'engine=weasyprint' https://md-to-pdf.herokuapp.com/
+
+## Built with
+
+- [Rocket - a web framework for Rust](https://rocket.rs/)
+- [Codemirror - a text editor for the browser](https://codemirror.net/)
+- [Pandoc - a universal document converter](https://pandoc.org/)
 
 </textarea>
 
