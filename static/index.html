@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>md-to-pdf</title>
+
+    <script src="codemirror.js"></script>
+    <link href="codemirror.css" rel="stylesheet"/>
+    <link href="theme-ayu-dark.css" rel="stylesheet"/>
+    <script src="mode-markdown.js"></script>
+    <script src="mode-css.js"></script>
+
+    <style>
+        body {
+            background: #243247;
+            font-family: monospace;
+            padding: 1em;
+        }
+
+        .CodeMirror, .form-section {
+            border-radius: 1em;
+            padding: 1em;
+            height: auto;
+        }
+
+        select {
+            padding: 0.5em;
+            border-radius: 0.2em;
+        }
+
+        button {
+            background: #c2d94c;
+            color: #0a0e14;
+            padding: 0.5em;
+            border-radius: 0.2em;
+            border-color: #c2d94c;
+            font-family: monospace;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h1 hidden="hidden">md-to-pdf</h1>
+
+<label for="markdown" hidden="hidden">Markdown</label>
+<textarea id="markdown" class="markdown">
+# md-to-pdf
+
+An API service for converting markdown to PDF
+
+## Usage
+
+You can just paste your markdown right here (edit this text) and download a PDF
+right away.
+
+### POST /
+
+Accepts markdown and responds with the converted PDF.
+
+Send a form parameter `markdown` with the content to convert:
+
+    curl -X POST -d 'markdown=# Heading 1' localhost:8000
+
+You can also style the markdown through css:
+
+    curl -X POST -d 'markdown=# Heading 1' -d 'css=h1 { color: red; }' localhost:8000
+
+Depending on what features you prefer and the output that works best, you can
+choose between two pdf conversion engines: `wkhtmltopdf` and `weasyprint`:
+
+    curl -X POST -d 'markdown=# Heading 1' -d 'engine=weasyprint' localhost:8000
+
+</textarea>
+
+<br/>
+
+<label for="css" hidden="hidden">CSS</label>
+<textarea id="css" class="css">
+/* You can add some CSS styles too, if you want. */
+
+h1 {
+    color: blue;
+}
+</textarea>
+
+<br/>
+
+<div style="border-radius: 1em; padding: 1em; color: #b3b1ad;">
+    <label for="engine">Conversion Engine (just try which works better for you)</label>
+    <select id="engine">
+        <option>wkhtmltopdf</option>
+        <option>weasyprint</option>
+    </select>
+</div>
+
+<br/>
+
+<button onclick="mdToPdf()" style="margin-left: 1em">Convert and download PDF</button>
+
+<script>
+    const markdown = CodeMirror.fromTextArea(
+        document.querySelector('#markdown'),
+        {mode: 'markdown', theme: 'ayu-dark'}
+    );
+    const css = CodeMirror.fromTextArea(
+        document.querySelector('#css'),
+        {mode: 'css', theme: 'ayu-dark'}
+    );
+
+    function mdToPdf() {
+        const formData = new FormData();
+        formData.append('markdown', markdown.getValue());
+        formData.append('css', markdown.getValue());
+        formData.append('engine', document.querySelector('#engine').value);
+
+        fetch('/', {
+            method: 'POST',
+            body: new URLSearchParams(formData),
+        }).then((response) => {
+            response.blob().then(downloadBlob)
+        });
+    }
+
+    function downloadBlob(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+
+        a.href = url;
+        a.download = 'md-to-pdf.pdf';
+
+        const clickHandler = () => {
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+                this.removeEventListener('click', clickHandler);
+            });
+        };
+        a.addEventListener('click', clickHandler);
+        a.click();
+    }
+</script>
+</body>
+</html>

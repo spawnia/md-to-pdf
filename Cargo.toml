@@ -8,6 +8,6 @@ edition = "2018"
 
 [dependencies]
 rocket = "0.4.4"
-pulldown-cmark = { version = "0.7", default-features = false }
+rocket_contrib = "0.4.4"
 tempfile = "3"
 log = "0.4.8"

@@ -6,48 +6,16 @@ extern crate rocket;
 #[macro_use]
 extern crate log;
 
-mod md_to_html;
-
 use core::fmt;
 use md_to_html::md_to_html;
 use rocket::request::Form;
 use rocket::response::{content, NamedFile};
+use rocket_contrib::serve::StaticFiles;
 use std::fmt::{Display, Formatter};
 use std::io::{Error, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
-
-#[get("/")]
-fn index() -> content::Html<String> {
-    return content::Html(md_to_html(
-        "
-# md-to-pdf
-
-An API service for converting markdown to PDF
-
-## Routes
-
-### POST /
-
-Accepts markdown and responds with the converted PDF.
-
-Send a form parameter `markdown` with the content to convert:
-
-    curl -X POST -d 'markdown=# Heading 1' localhost:8000
-
-You can also style the markdown through css:
-
-    curl -X POST -d 'markdown=# Heading 1' -d 'css=h1 { color: red; }' localhost:8000
-
-Depending on what features you prefer and the output that works best, you can
-choose between two pdf conversion engines: `wkhtmltopdf` and `weasyprint`:
-
-    curl -X POST -d 'markdown=# Heading 1' -d 'engine=weasyprint' localhost:8000
-
-",
-    ));
-}
 
 #[derive(FromFormValue)]
 enum PdfEngine {
@@ -111,5 +79,8 @@ fn main() {
         Err(_e) => (),
     }
 
-    rocket::ignite().mount("/", routes![index, pandoc]).launch();
+    rocket::ignite()
+        .mount("/", routes![pandoc])
+        .mount("/", StaticFiles::from("static"))
+        .launch();
 }
