@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>md-to-pdf</title>
 
-    <script src="codemirror.js"></script>
-    <link href="codemirror.css" rel="stylesheet"/>
+    <link href="codemirror.css" rel="stylesheet" />
     <link href="theme-ayu-dark.css" rel="stylesheet"/>
+    <script src="codemirror.js"></script>
     <script src="mode-markdown.js"></script>
     <script src="mode-css.js"></script>
 
@@ -110,7 +110,7 @@ h1 {
     function mdToPdf() {
         const formData = new FormData();
         formData.append('markdown', markdown.getValue());
-        formData.append('css', markdown.getValue());
+        formData.append('css', css.getValue());
         formData.append('engine', document.querySelector('#engine').value);
 
         fetch('/', {
