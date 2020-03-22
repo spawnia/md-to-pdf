@@ -1,4 +1,5 @@
 .PHONY: it
+it:
 	docker-compose up -d
 
 .PHONY: help
