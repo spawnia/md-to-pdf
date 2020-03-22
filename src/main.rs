@@ -41,9 +41,9 @@ You can also style the markdown through css:
     curl -X POST -d 'markdown=# Heading 1' -d 'css=h1 { color: red; }' localhost:8000
 
 Depending on what features you prefer and the output that works best, you can
-choose between two pdf conversion engines: `wkhtmltopdf` and `weazyprint`:
+choose between two pdf conversion engines: `wkhtmltopdf` and `weasyprint`:
 
-    curl -X POST -d 'markdown=# Heading 1' -d 'engine=weazyprint' localhost:8000
+    curl -X POST -d 'markdown=# Heading 1' -d 'engine=weasyprint' localhost:8000
 
 ",
     ));
@@ -51,14 +51,14 @@ choose between two pdf conversion engines: `wkhtmltopdf` and `weazyprint`:
 
 #[derive(FromFormValue)]
 enum PdfEngine {
-    Weazyprint,
+    Weasyprint,
     Wkhtmltopdf,
 }
 
 impl Display for PdfEngine {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match *self {
-            PdfEngine::Weazyprint => write!(f, "weazyprint"),
+            PdfEngine::Weasyprint => write!(f, "weasyprint"),
             PdfEngine::Wkhtmltopdf => write!(f, "wkhtmltopdf"),
         }
     }
@@ -80,7 +80,7 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Error> {
 
     pandoc_builder.arg("--output=/tmp/markdown.pdf");
 
-    let engine = convert.engine.as_ref().unwrap_or(&PdfEngine::Weazyprint);
+    let engine = convert.engine.as_ref().unwrap_or(&PdfEngine::Weasyprint);
     pandoc_builder.arg("--pdf-engine=".to_owned() + engine.to_string().as_str());
 
     let mut css_file;
