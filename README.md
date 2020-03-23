@@ -10,18 +10,14 @@ Just paste your markdown and download the converted PDF.
 ## API
 
 You can convert markdown by sending a `POST` request to `https://md-to-pdf.herokuapp.com/`.
-Send a form parameter `markdown` with the content to convert:
 
-    curl -X POST -d 'markdown=# Heading 1' https://md-to-pdf.herokuapp.com/
+	curl -X POST -d 'markdown=# Heading 1' -o md-to-pdf.pdf https://md-to-pdf.herokuapp.com/
 
-You can also style the markdown through CSS:
-
-    curl -X POST -d 'markdown=# Heading 1' -d 'css=h1 { color: red; }' https://md-to-pdf.herokuapp.com/
-
-Depending on what features you prefer and the output that works best, you can
-choose between two pdf conversion engines: `wkhtmltopdf` and `weasyprint`:
-
-    curl -X POST -d 'markdown=# Heading 1' -d 'engine=weasyprint' https://md-to-pdf.herokuapp.com/
+| Parameter | Required | Description |
+| --- | --- | --- |
+| `markdown` | Required | The markdown content to convert |
+| `css` | Optional | CSS styles to apply |
+| `engine` | Optional |The PDF conversion engine, can be `wkhtmltopdf` or `weasyprint`, defaults to `weasyprint` |
 
 ## Built with
 
