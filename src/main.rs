@@ -8,7 +8,8 @@ extern crate log;
 
 use core::fmt;
 use rocket::request::Form;
-use rocket::response::NamedFile;
+use rocket::response::{Debug, NamedFile};
+use rocket_contrib::compression::Compression;
 use rocket_contrib::serve::StaticFiles;
 use std::fmt::{Display, Formatter};
 use std::io::{Error, Write};
@@ -39,7 +40,7 @@ struct ConvertForm {
 }
 
 #[post("/", data = "<convert>")]
-fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Error> {
+fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Debug<Error>> {
     let mut pandoc_builder = Command::new("pandoc");
 
     // Pandoc can not perform PDF conversion to STDOUT, so we need a temp file
@@ -90,7 +91,7 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Error> {
     let output = pandoc_process.wait_with_output()?;
     debug!("{:?}", output);
 
-    NamedFile::open(Path::new(pdf_path))
+    NamedFile::open(Path::new(pdf_path)).map_err(Debug)
 }
 
 fn main() {
@@ -103,5 +104,6 @@ fn main() {
     rocket::ignite()
         .mount("/", routes![pandoc])
         .mount("/", StaticFiles::from("static"))
+        .attach(Compression::fairing())
         .launch();
 }
