@@ -2,7 +2,7 @@
 
 A web service for converting markdown to PDF
 
-## Usage
+## Web UI
 
 For quick experimentation, you can use the web version at [https://md-to-pdf.herokuapp.com/](https://md-to-pdf.herokuapp.com/).
 Just paste your markdown and download the converted PDF.
@@ -11,7 +11,7 @@ Just paste your markdown and download the converted PDF.
 
 You can convert markdown by sending a `POST` request to `https://md-to-pdf.herokuapp.com/`.
 
-	curl -X POST -d 'markdown=# Heading 1' -o md-to-pdf.pdf https://md-to-pdf.herokuapp.com/
+    curl -X POST -d 'markdown=# Heading 1' -o md-to-pdf.pdf https://md-to-pdf.herokuapp.com/
 
 | Parameter | Required | Description |
 | --- | --- | --- |
@@ -19,8 +19,15 @@ You can convert markdown by sending a `POST` request to `https://md-to-pdf.herok
 | `css` | Optional | CSS styles to apply |
 | `engine` | Optional |The PDF conversion engine, can be `wkhtmltopdf` or `weasyprint`, defaults to `weasyprint` |
 
+## Deploy
+
+A prebuilt container image is available at [Docker Hub](https://hub.docker.com/r/spawnia/md-to-pdf).
+You can run it yourself like this:
+
+    docker run -p 8000:8000 spawnia/md-to-pdf
+
 ## Built with
 
 - [Rocket - a web framework for Rust](https://rocket.rs/)
-- [Codemirror - a text editor for the browser](https://codemirror.net/)
 - [Pandoc - a universal document converter](https://pandoc.org/)
+- [Codemirror - a text editor for the browser](https://codemirror.net/)
