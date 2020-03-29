@@ -1,1 +1,3 @@
-static/* linguist-vendored
+static/*.js linguist-vendored
+static/*.css linguist-vendored
+static/index.html linguist-documentation
