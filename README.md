@@ -11,13 +11,17 @@ Just paste your markdown and download the converted PDF.
 
 You can convert markdown by sending a `POST` request to `https://md-to-pdf.herokuapp.com/`.
 
-    curl -X POST -d 'markdown=# Heading 1' -o md-to-pdf.pdf https://md-to-pdf.herokuapp.com/
+    curl -d 'markdown=# Heading 1' -o md-to-pdf.pdf https://md-to-pdf.herokuapp.com/
 
 | Parameter | Required | Description |
 | --- | --- | --- |
 | `markdown` | Required | The markdown content to convert |
 | `css` | Optional | CSS styles to apply |
 | `engine` | Optional |The PDF conversion engine, can be `wkhtmltopdf` or `weasyprint`, defaults to `weasyprint` |
+
+Send data from files like this:
+
+    curl --data-urlencode "markdown=$(cat example.md)" 
 
 ## Deploy
 
