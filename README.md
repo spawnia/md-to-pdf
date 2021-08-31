@@ -11,7 +11,7 @@ Just paste your markdown and download the converted PDF.
 
 You can convert markdown by sending a `POST` request to `https://md-to-pdf.herokuapp.com`.
 
-    curl -d 'markdown=# Heading 1' -o md-to-pdf.pdf https://md-to-pdf.herokuapp.com
+    curl --data-urlencode 'markdown=# Heading 1' --output md-to-pdf.pdf https://md-to-pdf.herokuapp.com
 
 | Parameter | Required | Description |
 | --- | --- | --- |

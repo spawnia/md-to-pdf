@@ -9,7 +9,6 @@ extern crate log;
 use core::fmt;
 use rocket::request::Form;
 use rocket::response::{Debug, NamedFile};
-use rocket_contrib::compression::Compression;
 use rocket_contrib::serve::StaticFiles;
 use std::fmt::{Display, Formatter};
 use std::io::{Error, Write};
@@ -104,6 +103,5 @@ fn main() {
     rocket::ignite()
         .mount("/", routes![pandoc])
         .mount("/", StaticFiles::from("static"))
-        .attach(Compression::fairing())
         .launch();
 }

@@ -1,11 +1,11 @@
-FROM rustlang/rust:nightly-buster as builder
+FROM rustlang/rust:nightly-slim as builder
 
 WORKDIR /usr/src/md-to-pdf
 COPY . .
 
 RUN cargo install --path .
 
-FROM debian:buster-slim
+FROM debian:sid-slim
 
 RUN apt-get update \
  && apt-get install -y \
