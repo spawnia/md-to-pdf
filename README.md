@@ -4,14 +4,14 @@ A web service for converting markdown to PDF
 
 ## Web UI
 
-For quick experimentation, you can use the web version at [https://md-to-pdf.herokuapp.com](https://md-to-pdf.herokuapp.com).
+For quick experimentation, you can use [the web version](https://md-to-pdf.fly.dev).
 Just paste your markdown and download the converted PDF.
 
 ## API
 
-You can convert markdown by sending a `POST` request to `https://md-to-pdf.herokuapp.com`.
+You can convert markdown by sending a `POST` request to `https://md-to-pdf.fly.dev`.
 
-    curl --data-urlencode 'markdown=# Heading 1' --output md-to-pdf.pdf https://md-to-pdf.herokuapp.com
+    curl --data-urlencode 'markdown=# Heading 1' --output md-to-pdf.pdf https://md-to-pdf.fly.dev
 
 | Parameter | Required | Description |
 | --- | --- | --- |

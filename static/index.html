@@ -68,14 +68,14 @@ A web service for converting markdown to PDF
 
 ## Web UI
 
-For quick experimentation, you can use the web version at [https://md-to-pdf.herokuapp.com/](https://md-to-pdf.herokuapp.com/).
+For quick experimentation, you can use [the web version](https://md-to-pdf.fly.dev).
 Just paste your markdown and download the converted PDF.
 
 ## API
 
-You can convert markdown by sending a `POST` request to `https://md-to-pdf.herokuapp.com/`.
+You can convert markdown by sending a `POST` request to `https://md-to-pdf.fly.dev`.
 
-    curl -d 'markdown=# Heading 1' -o md-to-pdf.pdf https://md-to-pdf.herokuapp.com/
+    curl --data-urlencode 'markdown=# Heading 1' --output md-to-pdf.pdf https://md-to-pdf.fly.dev
 
 | Parameter | Required | Description |
 | --- | --- | --- |
@@ -96,9 +96,9 @@ You can run it yourself like this:
 
 ## Built with
 
-- [Rocket - a web framework for Rust](https://rocket.rs/)
-- [Pandoc - a universal document converter](https://pandoc.org/)
-- [Codemirror - a text editor for the browser](https://codemirror.net/)
+- [Rocket - a web framework for Rust](https://rocket.rs)
+- [Pandoc - a universal document converter](https://pandoc.org)
+- [Codemirror - a text editor for the browser](https://codemirror.net)
 </textarea>
 
 <br/>
