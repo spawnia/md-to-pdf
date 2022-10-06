@@ -81,7 +81,7 @@ You can convert markdown by sending a `POST` request to `https://md-to-pdf.fly.d
 | --- | --- | --- |
 | `markdown` | Required | The markdown content to convert |
 | `css` | Optional | CSS styles to apply |
-| `engine` | Optional |The PDF conversion engine, can be `wkhtmltopdf` or `weasyprint`, defaults to `weasyprint` |
+| `engine` | Optional |The PDF conversion engine, can be `wkhtmltopdf`, `weasyprint` or `pdflatex`, defaults to `weasyprint` |
 
 Send data from files like this:
 
@@ -131,6 +131,7 @@ th, td {
     <select id="engine">
         <option>weasyprint</option>
         <option>wkhtmltopdf</option>
+        <option label="pdflatex (CSS will have no effect)">pdflatex</option>
     </select>
 </div>
 

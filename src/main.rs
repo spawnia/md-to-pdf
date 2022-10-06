@@ -20,6 +20,7 @@ use tempfile::Builder;
 enum PdfEngine {
     Weasyprint,
     Wkhtmltopdf,
+    Pdflatex,
 }
 
 impl Display for PdfEngine {
@@ -27,6 +28,7 @@ impl Display for PdfEngine {
         match *self {
             PdfEngine::Weasyprint => write!(f, "weasyprint"),
             PdfEngine::Wkhtmltopdf => write!(f, "wkhtmltopdf"),
+            PdfEngine::Pdflatex => write!(f, "pdflatex"),
         }
     }
 }
