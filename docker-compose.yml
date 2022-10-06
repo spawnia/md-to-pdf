@@ -10,7 +10,7 @@ services:
       context: .
       dockerfile: pandoc.dockerfile
     volumes:
-      - ./:/home/rocket
+      - ./:/workdir
     tty: true
     ports:
       - 8000:8000

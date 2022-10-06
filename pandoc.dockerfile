@@ -11,6 +11,4 @@ RUN apt-get update \
 
 EXPOSE 8000
 
-RUN useradd -m rocket
-USER rocket
-WORKDIR /home/rocket
+WORKDIR /workdir
