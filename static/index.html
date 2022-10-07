@@ -149,18 +149,23 @@ th, td {
         {mode: 'css', theme: 'ayu-dark'}
     );
 
-    function mdToPdf() {
+    async function mdToPdf() {
         const formData = new FormData();
         formData.append('markdown', markdown.getValue());
         formData.append('css', css.getValue());
         formData.append('engine', document.querySelector('#engine').value);
 
-        fetch('/', {
+        const response = await fetch('/', {
             method: 'POST',
             body: new URLSearchParams(formData),
-        }).then((response) => {
-            response.blob().then(downloadBlob)
         });
+        if (response.ok) {
+            const blob = await response.blob();
+            downloadBlob(blob);
+        } else {
+            const text = await response.text()
+            alert(text);
+        }
     }
 
     function downloadBlob(blob) {
