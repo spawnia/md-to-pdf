@@ -9,3 +9,5 @@
 **/*.rs.bk
 
 *.pdf
+.bash_history
+md-to-pdf

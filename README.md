@@ -13,11 +13,11 @@ You can convert markdown by sending a `POST` request to `https://md-to-pdf.fly.d
 
     curl --data-urlencode 'markdown=# Heading 1' --output md-to-pdf.pdf https://md-to-pdf.fly.dev
 
-| Parameter | Required | Description |
-| --- | --- | --- |
-| `markdown` | Required | The markdown content to convert |
-| `css` | Optional | CSS styles to apply |
-| `engine` | Optional |The PDF conversion engine, can be `wkhtmltopdf` or `weasyprint`, defaults to `weasyprint` |
+| Parameter  | Required | Description                                                                                           |
+|------------|----------|-------------------------------------------------------------------------------------------------------|
+| `markdown` | Required | The markdown content to convert                                                                       |
+| `css`      | Optional | CSS styles to apply                                                                                   |
+| `engine`   | Optional | The PDF conversion engine, can be `weasyprint`, `wkhtmltopdf` or `pdflatex`, defaults to `weasyprint` |
 
 Send data from files like this:
 

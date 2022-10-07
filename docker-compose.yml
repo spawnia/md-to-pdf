@@ -1,6 +1,16 @@
 services:
-  md-to-pdf:
+  rust:
+    image: rustlang/rust:nightly-slim
+    volumes:
+      - ./:/workdir
+    working_dir: /workdir
+    tty: true
+  pandoc:
     build:
       context: .
+      dockerfile: pandoc.dockerfile
+    volumes:
+      - ./:/workdir
+    tty: true
     ports:
       - 8000:8000

@@ -7,19 +7,21 @@ extern crate rocket;
 extern crate log;
 
 use core::fmt;
-use rocket::request::Form;
-use rocket::response::{Debug, NamedFile};
+use rocket::http::{ContentType, Status};
+use rocket::request::{Form, Request};
+use rocket::response::{self, NamedFile, Responder, Response};
 use rocket_contrib::serve::StaticFiles;
 use std::fmt::{Display, Formatter};
-use std::io::{Error, Write};
+use std::io::{self, Write};
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 use tempfile::Builder;
 
 #[derive(FromFormValue)]
 enum PdfEngine {
     Weasyprint,
     Wkhtmltopdf,
+    Pdflatex,
 }
 
 impl Display for PdfEngine {
@@ -27,6 +29,7 @@ impl Display for PdfEngine {
         match *self {
             PdfEngine::Weasyprint => write!(f, "weasyprint"),
             PdfEngine::Wkhtmltopdf => write!(f, "wkhtmltopdf"),
+            PdfEngine::Pdflatex => write!(f, "pdflatex"),
         }
     }
 }
@@ -38,8 +41,35 @@ struct ConvertForm {
     engine: Option<PdfEngine>,
 }
 
+#[derive(Debug)]
+enum PandocError {
+    Output(Output),
+    IO(io::Error),
+}
+
+impl From<io::Error> for PandocError {
+    fn from(err: io::Error) -> PandocError {
+        PandocError::IO(err)
+    }
+}
+
+impl<'r> Responder<'r> for PandocError {
+    fn respond_to(self, _: &Request) -> response::Result<'r> {
+        let mut builder = Response::build();
+        match self {
+            PandocError::Output(output) => builder
+                .header(ContentType::Plain)
+                .sized_body(io::Cursor::new(output.stderr))
+                .status(Status::BadRequest),
+            PandocError::IO(_) => builder.status(Status::InternalServerError),
+        };
+
+        builder.ok()
+    }
+}
+
 #[post("/", data = "<convert>")]
-fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Debug<Error>> {
+fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, PandocError> {
     let mut pandoc_builder = Command::new("pandoc");
 
     // Pandoc can not perform PDF conversion to STDOUT, so we need a temp file
@@ -48,7 +78,8 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Debug<Error>> {
         // - Pandoc will know that it should convert to PDF
         // - Rocket will set the correct Content-Type response header
         .suffix(".pdf")
-        .tempfile()?
+        .tempfile()
+        .map_err(PandocError::IO)?
         .into_temp_path();
     let pdf_path = pdf_temp_path
         .to_str()
@@ -71,8 +102,11 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Debug<Error>> {
         css_file = Builder::new()
             // Necessary for weasyprint to recognize it as a proper stylesheet
             .suffix(".css")
-            .tempfile()?;
-        css_file.write_all(convert.css.as_ref().unwrap().as_bytes())?;
+            .tempfile()
+            .map_err(PandocError::IO)?;
+        css_file
+            .write_all(convert.css.as_ref().unwrap().as_bytes())
+            .map_err(PandocError::IO)?;
         pandoc_builder.arg("--css=".to_owned() + css_file.path().to_str().unwrap());
     }
 
@@ -80,17 +114,25 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, Debug<Error>> {
     let stdin = Stdio::piped();
     pandoc_builder.stdin(stdin);
 
-    let mut pandoc_process = pandoc_builder.spawn()?;
+    pandoc_builder.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    let mut pandoc_process = pandoc_builder.spawn().map_err(PandocError::IO)?;
 
     {
         let pandoc_stdin = pandoc_process.stdin.as_mut().unwrap();
-        pandoc_stdin.write_all(convert.markdown.as_bytes())?;
+        pandoc_stdin
+            .write_all(convert.markdown.as_bytes())
+            .map_err(PandocError::IO)?;
     }
 
-    let output = pandoc_process.wait_with_output()?;
+    let output = pandoc_process.wait_with_output().map_err(PandocError::IO)?;
     debug!("{:?}", output);
 
-    NamedFile::open(Path::new(pdf_path)).map_err(Debug)
+    if !output.status.success() {
+        return Err(PandocError::Output(output));
+    }
+
+    NamedFile::open(Path::new(pdf_path)).map_err(PandocError::IO)
 }
 
 fn main() {
