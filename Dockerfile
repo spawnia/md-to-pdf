@@ -26,3 +26,4 @@ USER rocket
 WORKDIR /home/rocket
 
 COPY static /home/rocket/static
+COPY Rocket.toml /home/rocket/Rocket.toml

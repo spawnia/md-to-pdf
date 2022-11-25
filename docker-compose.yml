@@ -5,6 +5,7 @@ services:
       - ./:/workdir
     working_dir: /workdir
     tty: true
+
   pandoc:
     build:
       context: .

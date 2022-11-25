@@ -1,2 +1,5 @@
 [development]
 address = "0.0.0.0"
+
+[global.limits]
+forms = 131072
