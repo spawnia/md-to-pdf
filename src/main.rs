@@ -125,7 +125,9 @@ fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
             .map_err(ConvertError::IO)?;
     }
 
-    let output = pandoc_process.wait_with_output().map_err(ConvertError::IO)?;
+    let output = pandoc_process
+        .wait_with_output()
+        .map_err(ConvertError::IO)?;
     debug!("{:?}", output);
 
     if !output.status.success() {
