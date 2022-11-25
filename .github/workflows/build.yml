@@ -14,8 +14,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Choose nightly
-      run: rustup update && cargo update && rustup override set nightly
+    - name: Set up rust nightly
+      run: |
+        rustup update
+        cargo update
+        rustup override set nightly
 
-    - name: Build
+    - name: Compile
       run: cargo build --verbose

@@ -42,34 +42,34 @@ struct ConvertForm {
 }
 
 #[derive(Debug)]
-enum PandocError {
+enum ConvertError {
     Output(Output),
     IO(io::Error),
 }
 
-impl From<io::Error> for PandocError {
-    fn from(err: io::Error) -> PandocError {
-        PandocError::IO(err)
+impl From<io::Error> for ConvertError {
+    fn from(err: io::Error) -> ConvertError {
+        ConvertError::IO(err)
     }
 }
 
-impl<'r> Responder<'r> for PandocError {
+impl<'r> Responder<'r> for ConvertError {
     fn respond_to(self, _: &Request) -> response::Result<'r> {
         let mut builder = Response::build();
         match self {
-            PandocError::Output(output) => builder
+            ConvertError::Output(output) => builder
                 .header(ContentType::Plain)
                 .sized_body(io::Cursor::new(output.stderr))
                 .status(Status::BadRequest),
-            PandocError::IO(_) => builder.status(Status::InternalServerError),
+            ConvertError::IO(_) => builder.status(Status::InternalServerError),
         };
 
         builder.ok()
     }
 }
 
-#[post("/", data = "<convert>")]
-fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, PandocError> {
+#[post("/", data = "<form>")]
+fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     let mut pandoc_builder = Command::new("pandoc");
 
     // Pandoc can not perform PDF conversion to STDOUT, so we need a temp file
@@ -79,7 +79,7 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, PandocError> {
         // - Rocket will set the correct Content-Type response header
         .suffix(".pdf")
         .tempfile()
-        .map_err(PandocError::IO)?
+        .map_err(ConvertError::IO)?
         .into_temp_path();
     let pdf_path = pdf_temp_path
         .to_str()
@@ -88,7 +88,7 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, PandocError> {
 
     pandoc_builder.arg(
         "--pdf-engine=".to_owned()
-            + convert
+            + form
                 .engine
                 .as_ref()
                 .unwrap_or(&PdfEngine::Weasyprint)
@@ -98,15 +98,15 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, PandocError> {
 
     // Declare outside of the if block to keep the file around until the end of this function if needed
     let mut css_file;
-    if convert.css.is_some() {
+    if form.css.is_some() {
         css_file = Builder::new()
             // Necessary for weasyprint to recognize it as a proper stylesheet
             .suffix(".css")
             .tempfile()
-            .map_err(PandocError::IO)?;
+            .map_err(ConvertError::IO)?;
         css_file
-            .write_all(convert.css.as_ref().unwrap().as_bytes())
-            .map_err(PandocError::IO)?;
+            .write_all(form.css.as_ref().unwrap().as_bytes())
+            .map_err(ConvertError::IO)?;
         pandoc_builder.arg("--css=".to_owned() + css_file.path().to_str().unwrap());
     }
 
@@ -116,34 +116,30 @@ fn pandoc(convert: Form<ConvertForm>) -> Result<NamedFile, PandocError> {
 
     pandoc_builder.stdout(Stdio::piped()).stderr(Stdio::piped());
 
-    let mut pandoc_process = pandoc_builder.spawn().map_err(PandocError::IO)?;
+    let mut pandoc_process = pandoc_builder.spawn().map_err(ConvertError::IO)?;
 
     {
         let pandoc_stdin = pandoc_process.stdin.as_mut().unwrap();
         pandoc_stdin
-            .write_all(convert.markdown.as_bytes())
-            .map_err(PandocError::IO)?;
+            .write_all(form.markdown.as_bytes())
+            .map_err(ConvertError::IO)?;
     }
 
-    let output = pandoc_process.wait_with_output().map_err(PandocError::IO)?;
+    let output = pandoc_process
+        .wait_with_output()
+        .map_err(ConvertError::IO)?;
     debug!("{:?}", output);
 
     if !output.status.success() {
-        return Err(PandocError::Output(output));
+        return Err(ConvertError::Output(output));
     }
 
-    NamedFile::open(Path::new(pdf_path)).map_err(PandocError::IO)
+    NamedFile::open(Path::new(pdf_path)).map_err(ConvertError::IO)
 }
 
 fn main() {
-    // Heroku compatibility
-    match std::env::var("PORT") {
-        Ok(p) => std::env::set_var("ROCKET_PORT", p),
-        Err(_e) => (),
-    }
-
     rocket::ignite()
-        .mount("/", routes![pandoc])
+        .mount("/", routes![convert])
         .mount("/", StaticFiles::from("static"))
         .launch();
 }
