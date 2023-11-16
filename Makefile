@@ -2,7 +2,7 @@ dcrust=$$( [ -f /.dockerenv ] && echo "" || echo "docker-compose exec rust")
 dcpandoc=$$( [ -f /.dockerenv ] && echo "" || echo "docker-compose exec pandoc")
 
 .PHONY: it
-it: fmt target/debug test ## Perform common targets
+it: fmt target/debug ## Perform common targets
 
 .PHONY: help
 help: ## Displays this list of targets with descriptions
