@@ -1,5 +1,6 @@
 [development]
 address = "0.0.0.0"
 
+# https://rocket.rs/v0.4/guide/configuration/#data-limits
 [global.limits]
-forms = 131072
+forms = 131072 # 128KiB

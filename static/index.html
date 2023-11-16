@@ -19,6 +19,7 @@
     <style>
         body {
             background: #243247;
+            color: #b3b1ad;
             font-family: monospace;
             margin: 0;
         }
@@ -61,6 +62,9 @@
 <main>
 <h1 hidden="hidden">md-to-pdf</h1>
 
+<label for="markdown">Markdown</label>
+<br>
+<br>
 <textarea id="markdown" class="markdown">
 # md-to-pdf
 
@@ -77,11 +81,11 @@ You can convert markdown by sending a `POST` request to `https://md-to-pdf.fly.d
 
     curl --data-urlencode 'markdown=# Heading 1' --output md-to-pdf.pdf https://md-to-pdf.fly.dev
 
-| Parameter | Required | Description |
-| --- | --- | --- |
-| `markdown` | Required | The markdown content to convert |
-| `css` | Optional | CSS styles to apply |
-| `engine` | Optional |The PDF conversion engine, can be `wkhtmltopdf`, `weasyprint` or `pdflatex`, defaults to `weasyprint` |
+| Parameter  | Required | Description                                                                                           |
+|------------|----------|-------------------------------------------------------------------------------------------------------|
+| `markdown` | Required | The markdown content to convert                                                                       |
+| `css`      | Optional | CSS styles to apply                                                                                   |
+| `engine`   | Optional | The PDF conversion engine, can be `weasyprint`, `wkhtmltopdf` or `pdflatex`, defaults to `weasyprint` |
 
 Send data from files like this:
 
@@ -92,7 +96,7 @@ Send data from files like this:
 A prebuilt container image is available at [Docker Hub](https://hub.docker.com/r/spawnia/md-to-pdf).
 You can run it yourself like this:
 
-    docker run -p 8000:8000 spawnia/md-to-pdf
+    docker run --publish=8000:8000 spawnia/md-to-pdf
 
 ## Built with
 
@@ -101,8 +105,11 @@ You can run it yourself like this:
 - [Codemirror - a text editor for the browser](https://codemirror.net)
 </textarea>
 
-<br/>
+<br>
 
+<label for="css">CSS</label>
+<br>
+<br>
 <textarea id="css" class="css">
 /* You can add some CSS styles too, if you want. */
 
@@ -124,20 +131,21 @@ th, td {
 }
 </textarea>
 
-<br/>
+<br>
 
-<div style="padding: 1em; color: #b3b1ad;">
-    <label for="engine">Conversion Engine (just try which works better for you)</label>
-    <select id="engine">
-        <option>weasyprint</option>
-        <option>wkhtmltopdf</option>
-        <option label="pdflatex (CSS will have no effect)">pdflatex</option>
-    </select>
-</div>
+<label for="engine">Conversion Engine (just try which works better for you)</label>
+<br />
+<br />
+<select id="engine">
+    <option>weasyprint</option>
+    <option>wkhtmltopdf</option>
+    <option label="pdflatex (CSS will have no effect)">pdflatex</option>
+</select>
 
-<br/>
+<br>
+<br>
 
-<button onclick="mdToPdf()" style="margin-left: 1em">Convert and download PDF</button>
+<button onclick="mdToPdf()">Convert and download PDF</button>
 
 <script>
     const markdown = CodeMirror.fromTextArea(

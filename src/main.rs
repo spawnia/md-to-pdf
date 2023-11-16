@@ -118,12 +118,12 @@ fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
 
     let mut pandoc_process = pandoc_builder.spawn().map_err(ConvertError::IO)?;
 
-    {
-        let pandoc_stdin = pandoc_process.stdin.as_mut().unwrap();
-        pandoc_stdin
-            .write_all(form.markdown.as_bytes())
-            .map_err(ConvertError::IO)?;
-    }
+    pandoc_process
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(form.markdown.as_bytes())
+        .map_err(ConvertError::IO)?;
 
     let output = pandoc_process
         .wait_with_output()
