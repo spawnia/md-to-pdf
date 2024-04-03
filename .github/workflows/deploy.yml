@@ -12,8 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - run: flyctl deploy
+      - name: Deploy to fly.io
+        run: flyctl deploy
