@@ -7,10 +7,11 @@ extern crate rocket;
 extern crate log;
 
 use core::fmt;
-use rocket::http::{ContentType, Status};
+use rocket::http::{ContentType, Method, Status};
 use rocket::request::{Form, Request};
 use rocket::response::{self, NamedFile, Responder, Response};
 use rocket_contrib::serve::StaticFiles;
+use rocket_cors::{AllowedOrigins, CorsOptions};
 use std::fmt::{Display, Formatter};
 use std::io::{self, Write};
 use std::path::Path;
@@ -138,7 +139,19 @@ fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
 }
 
 fn main() {
+    // https://github.com/lawliet89/rocket_cors/blob/v0.5.2/examples/fairing.rs
+    let cors = CorsOptions::default()
+        .allowed_origins(AllowedOrigins::all())
+        .allowed_methods(
+            vec![Method::Get, Method::Post, Method::Options]
+                .into_iter()
+                .map(From::from)
+                .collect(),
+        )
+        .to_cors();
+
     rocket::ignite()
+        .attach(cors.unwrap())
         .mount("/", routes![convert])
         .mount("/", StaticFiles::from("static"))
         .launch();
