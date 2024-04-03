@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 rocket = "0.4"
+rocket_cors = "0.5.2"
 tempfile = "3"
 log = "0.4"
 

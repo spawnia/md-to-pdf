@@ -1,6 +1,8 @@
 services:
   rust:
-    image: rustlang/rust:nightly-slim
+    build:
+      context: .
+      dockerfile: rust.dockerfile
     volumes:
       - ./:/workdir
     working_dir: /workdir
