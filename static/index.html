@@ -34,7 +34,7 @@
             height: auto;
         }
 
-        select {
+        select, input {
             padding: 0.5em;
             border-radius: 0.2em;
         }
@@ -55,6 +55,12 @@
             width: 100%;
             height: 2.5rem;
             text-align: center;
+        }
+
+        .config {
+            display: flex;
+            flex-direction: row;
+            gap: 50px;
         }
     </style>
 </head>
@@ -133,14 +139,25 @@ th, td {
 
 <br>
 
-<label for="engine">Conversion Engine (just try which works better for you)</label>
-<br />
-<br />
-<select id="engine">
-    <option>weasyprint</option>
-    <option>wkhtmltopdf</option>
-    <option label="pdflatex (CSS will have no effect)">pdflatex</option>
-</select>
+<div class="config">
+    <div>
+        <label for="engine">Conversion Engine (just try which works better for you)</label>
+        <br />
+        <br />
+        <select id="engine">
+            <option>weasyprint</option>
+            <option>wkhtmltopdf</option>
+            <option label="pdflatex (CSS will have no effect)">pdflatex</option>
+        </select>
+    </div>
+
+    <div>
+        <label for="filename">File name</label> 
+        <br />
+        <br />
+        <input type="text" id="filename">
+    </div>
+</div>
 
 <br>
 <br>
@@ -179,9 +196,11 @@ th, td {
     function downloadBlob(blob) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
+        const filename = document.querySelector('#filename').value || 'md-to-pdf'
+        console.log({filename : filename});
 
         a.href = url;
-        a.download = 'md-to-pdf.pdf';
+        a.download = filename + '.pdf';
 
         const clickHandler = () => {
             setTimeout(() => {
