@@ -28,6 +28,7 @@
             padding: 1em;
         }
 
+        /* Class is automatically added to textarea elements, see https://codemirror.net/5/doc/manual.html#styling. */
         .CodeMirror {
             border-radius: 1em;
             padding: 1em;
@@ -61,12 +62,6 @@
             height: 2.5rem;
             text-align: center;
         }
-
-        .config {
-            display: flex;
-            flex-direction: row;
-            gap: 50px;
-        }
     </style>
 </head>
 <body>
@@ -76,7 +71,7 @@
 <label for="markdown">Markdown</label>
 <br>
 <br>
-<textarea id="markdown" class="markdown">
+<textarea id="markdown">
 # md-to-pdf
 
 A web service for converting markdown to PDF
@@ -121,7 +116,7 @@ You can run it yourself like this:
 <label for="css">CSS</label>
 <br>
 <br>
-<textarea id="css" class="css">
+<textarea id="css">
 /* You can add some CSS styles too, if you want. */
 
 h1, h2 {
@@ -144,7 +139,7 @@ th, td {
 
 <br>
 
-<div class="config">
+<div style="display: flex; flex-direction: row; gap: 50px;">
     <div>
         <label for="engine">Conversion Engine (just try which works better for you)</label>
         <br />
