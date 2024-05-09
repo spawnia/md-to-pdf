@@ -10,7 +10,7 @@ on:
 
 jobs:
   push_to_registry:
-    name: Push Docker image to Docker Hub
+    name: Build Docker image and push to Docker Hub on master
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
