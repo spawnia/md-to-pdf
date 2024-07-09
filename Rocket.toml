@@ -1,6 +1,6 @@
-[debug]
+[default]
 address = "0.0.0.0"
 
 # https://rocket.rs/guide/v0.5/configuration/#limits
-[global.limits]
+[default.limits]
 forms = "128KiB"
