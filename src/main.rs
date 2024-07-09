@@ -1,5 +1,3 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
 #[macro_use]
 extern crate rocket;
 
@@ -7,10 +5,11 @@ extern crate rocket;
 extern crate log;
 
 use core::fmt;
+use rocket::form::Form;
+use rocket::fs::{FileServer, NamedFile};
 use rocket::http::{ContentType, Method, Status};
-use rocket::request::{Form, Request};
-use rocket::response::{self, NamedFile, Responder, Response};
-use rocket_contrib::serve::StaticFiles;
+use rocket::request::Request;
+use rocket::response::{self, Responder, Response};
 use rocket_cors::{AllowedOrigins, CorsOptions};
 use std::fmt::{Display, Formatter};
 use std::io::{self, Write};
@@ -18,7 +17,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use tempfile::Builder;
 
-#[derive(FromFormValue)]
+#[derive(FromFormField)]
 enum PdfEngine {
     Weasyprint,
     Wkhtmltopdf,
@@ -54,13 +53,13 @@ impl From<io::Error> for ConvertError {
     }
 }
 
-impl<'r> Responder<'r> for ConvertError {
-    fn respond_to(self, _: &Request) -> response::Result<'r> {
+impl<'r> Responder<'r, 'static> for ConvertError {
+    fn respond_to(self, _: &Request) -> response::Result<'static> {
         let mut builder = Response::build();
         match self {
             ConvertError::Output(output) => builder
                 .header(ContentType::Plain)
-                .sized_body(io::Cursor::new(output.stderr))
+                .sized_body(output.stderr.len(), io::Cursor::new(output.stderr))
                 .status(Status::BadRequest),
             ConvertError::IO(_) => builder.status(Status::InternalServerError),
         };
@@ -70,7 +69,7 @@ impl<'r> Responder<'r> for ConvertError {
 }
 
 #[post("/", data = "<form>")]
-fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
+async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     let mut pandoc_builder = Command::new("pandoc");
 
     // Pandoc can not perform PDF conversion to STDOUT, so we need a temp file
@@ -135,10 +134,13 @@ fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
         return Err(ConvertError::Output(output));
     }
 
-    NamedFile::open(Path::new(pdf_path)).map_err(ConvertError::IO)
+    NamedFile::open(Path::new(pdf_path))
+        .await
+        .map_err(ConvertError::IO)
 }
 
-fn main() {
+#[launch]
+fn rocket() -> _ {
     // https://github.com/lawliet89/rocket_cors/blob/v0.5.2/examples/fairing.rs
     let cors = CorsOptions::default()
         .allowed_origins(AllowedOrigins::all())
@@ -150,9 +152,8 @@ fn main() {
         )
         .to_cors();
 
-    rocket::ignite()
+    rocket::build()
         .attach(cors.unwrap())
         .mount("/", routes![convert])
-        .mount("/", StaticFiles::from("static"))
-        .launch();
+        .mount("/", FileServer::from("static"))
 }

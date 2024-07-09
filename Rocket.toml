@@ -1,6 +1,6 @@
-[development]
+[debug]
 address = "0.0.0.0"
 
-# https://rocket.rs/v0.4/guide/configuration/#data-limits
+# https://rocket.rs/guide/v0.5/configuration/#limits
 [global.limits]
-forms = 131072 # 128KiB
+forms = "128KiB"
