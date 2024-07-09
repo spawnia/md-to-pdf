@@ -1,18 +1,12 @@
 [package]
 name = "md-to-pdf"
-version = "1.2.0"
 authors = ["spawnia <benedikt@franke.tech>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rocket = "0.4"
-rocket_cors = "0.5.2"
+rocket = "0.5"
+rocket_cors = "0.6"
 tempfile = "3"
 log = "0.4"
-
-[dependencies.rocket_contrib]
-version = "0.4"
-default-features = false
-features = ["serve"]
