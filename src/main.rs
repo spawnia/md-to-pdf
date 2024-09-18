@@ -39,6 +39,8 @@ struct ConvertForm {
     markdown: String,
     css: Option<String>,
     engine: Option<PdfEngine>,
+    header_template: Option<String>,
+    footer_template: Option<String>,
 }
 
 #[derive(Debug)]
@@ -74,9 +76,6 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
 
     // Pandoc can not perform PDF conversion to STDOUT, so we need a temp file
     let pdf_temp_path = Builder::new()
-        // Setting that suffix accomplishes two things:
-        // - Pandoc will know that it should convert to PDF
-        // - Rocket will set the correct Content-Type response header
         .suffix(".pdf")
         .tempfile()
         .map_err(ConvertError::IO)?
@@ -96,11 +95,10 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
                 .as_str(),
     );
 
-    // Declare outside of the if block to keep the file around until the end of this function if needed
+    // Handle CSS
     let mut css_file;
     if form.css.is_some() {
         css_file = Builder::new()
-            // Necessary for weasyprint to recognize it as a proper stylesheet
             .suffix(".css")
             .tempfile()
             .map_err(ConvertError::IO)?;
@@ -108,6 +106,32 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
             .write_all(form.css.as_ref().unwrap().as_bytes())
             .map_err(ConvertError::IO)?;
         pandoc_builder.arg("--css=".to_owned() + css_file.path().to_str().unwrap());
+    }
+
+    // Handle header template
+    let mut header_file;
+    if form.header_template.is_some() {
+        header_file = Builder::new()
+            .suffix(".html")
+            .tempfile()
+            .map_err(ConvertError::IO)?;
+        header_file
+            .write_all(form.header_template.as_ref().unwrap().as_bytes())
+            .map_err(ConvertError::IO)?;
+        pandoc_builder.arg("--include-in-header=".to_owned() + header_file.path().to_str().unwrap());
+    }
+
+    // Handle footer template
+    let mut footer_file;
+    if form.footer_template.is_some() {
+        footer_file = Builder::new()
+            .suffix(".html")
+            .tempfile()
+            .map_err(ConvertError::IO)?;
+        footer_file
+            .write_all(form.footer_template.as_ref().unwrap().as_bytes())
+            .map_err(ConvertError::IO)?;
+        pandoc_builder.arg("--include-in-footer=".to_owned() + footer_file.path().to_str().unwrap());
     }
 
     // We can avoid writing the input to a file by streaming it to STDIN

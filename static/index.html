@@ -182,6 +182,8 @@ th, td {
         formData.append('markdown', markdown.getValue());
         formData.append('css', css.getValue());
         formData.append('engine', document.querySelector('#engine').value);
+        formData.append('header_template', document.querySelector('#header_template').value);
+        formData.append('footer_template', document.querySelector('#footer_template').value);
 
         const response = await fetch('/', {
             method: 'POST',
