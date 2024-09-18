@@ -13,10 +13,7 @@ This project introduces a user-friendly way to convert Markdown to PDF with adva
 
 ## Web UI
 
-For quick experimentation, use [the web version](https://md-to-pdf.fly.dev) hosted on [Fly.io](https://fly.io).  
-Simply paste your Markdown, choose your options, and download the converted PDF.
-
-**Note:** Availability is not guaranteed. Check [Fly.io status](https://status.flyio.net) if the service is down, or consider deploying it yourself (see [Deploy](#deploy)).
+Use the web UI locally. See the [Deploy](#deploy) section for more information.
 
 ---
 
