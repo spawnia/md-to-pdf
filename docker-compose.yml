@@ -7,6 +7,11 @@ services:
       - ./:/workdir
     working_dir: /workdir
     tty: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   pandoc:
     build:
@@ -17,3 +22,8 @@ services:
     tty: true
     ports:
       - 8000:8000
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -11,13 +11,13 @@ This project introduces a user-friendly way to convert Markdown to PDF with adva
 
 ---
 
-## Web UI
+### Web UI
 
 Use the web UI locally. See the [Deploy](#deploy) section for more information.
 
 ---
 
-## API
+### API
 
 Convert Markdown programmatically with a simple `POST` request to the API endpoint:
 
@@ -25,7 +25,7 @@ Convert Markdown programmatically with a simple `POST` request to the API endpoi
 curl --data-urlencode 'markdown=# Heading 1' --output md-to-pdf.pdf https://md-to-pdf.fly.dev
 ```
 
-### Parameters
+#### Parameters
 
 | Parameter          | Required | Description                                                                                             |
 |--------------------|----------|---------------------------------------------------------------------------------------------------------|
@@ -40,6 +40,16 @@ To send data from a file:
 ```bash
 curl --data-urlencode "markdown=$(cat example.md)" --output result.pdf https://md-to-pdf.fly.dev
 ```
+
+---
+
+## Minimal Server Requirements
+1. Operating System: A Linux-based OS (e.g., Ubuntu, Debian).
+2. CPU: At least 2 cores.
+3. RAM: Minimum 2 GB.
+4. Storage: At least 10 GB of free disk space.
+5. Docker: Installed and running.
+6. Network: Open port 8000 for the web service.
 
 ---
 
