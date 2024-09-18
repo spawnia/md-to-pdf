@@ -72,10 +72,6 @@ impl<'r> Responder<'r, 'static> for ConvertError {
     }
 }
 
-// ... existing code ...
-
-// ... existing code ...
-
 #[post("/", data = "<form>")]
 async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     let mut pandoc_builder = Command::new("pandoc");
@@ -103,6 +99,19 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
 
     // Handle CSS
     let css_temp_path = if let Some(css) = &form.css {
+        let mut combined_css = String::new();
+
+        // Read default CSS
+        let default_css_path = "templates/default.css";
+        let default_css = fs::read_to_string(default_css_path).map_err(|e| {
+            error!("Failed to read default CSS file: {}", e);
+            ConvertError::IO(e)
+        })?;
+        combined_css.push_str(&default_css);
+
+        // Append user-provided CSS
+        combined_css.push_str(css);
+
         let mut css_file = Builder::new()
             .suffix(".css")
             .tempfile()
@@ -111,7 +120,7 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
                 ConvertError::IO(e)
             })?;
         css_file
-            .write_all(css.as_bytes())
+            .write_all(combined_css.as_bytes())
             .map_err(|e| {
                 error!("Failed to write to temporary CSS file: {}", e);
                 ConvertError::IO(e)
@@ -122,6 +131,9 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
         pandoc_builder.arg("--css=".to_owned() + css_file_path_str);
         Some(css_file_path)
     } else {
+        // Use default CSS if no custom CSS is provided
+        let default_css_path = "static/default_fonts.css";
+        pandoc_builder.arg("--css=".to_owned() + default_css_path);
         None
     };
 
@@ -251,8 +263,6 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
             ConvertError::IO(e)
         })
 }
-
-// ... existing code ...
 
 #[launch]
 fn rocket() -> _ {
