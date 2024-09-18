@@ -29,3 +29,4 @@ WORKDIR /home/rocket
 
 COPY static /home/rocket/static
 COPY Rocket.toml /home/rocket/Rocket.toml
+COPY templates /home/rocket/templates 

@@ -23,7 +23,7 @@ processes = []
     type = "connections"
 
   [[services.ports]]
-    force_https = true
+    force_https = false
     handlers = ["http"]
     port = 80
 

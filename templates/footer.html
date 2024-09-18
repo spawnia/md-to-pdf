@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .footer {
+            width: 100%;
+            text-align: center;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+            margin-top: 20px;
+            position: fixed;
+            bottom: 0;
+        }
+        .page-number:before {
+            content: "Page " counter(page);
+        }
+    </style>
+</head>
+<body>
+    <div class="footer">
+        <div class="page-number"></div>
+    </div>
+</body>
+</html>

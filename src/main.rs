@@ -12,10 +12,12 @@ use rocket::request::Request;
 use rocket::response::{self, Responder, Response};
 use rocket_cors::{AllowedOrigins, CorsOptions};
 use std::fmt::{Display, Formatter};
+use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use tempfile::Builder;
+use env_logger;
 
 #[derive(FromFormField)]
 enum PdfEngine {
@@ -70,6 +72,8 @@ impl<'r> Responder<'r, 'static> for ConvertError {
     }
 }
 
+// ... existing code ...
+
 #[post("/", data = "<form>")]
 async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     let mut pandoc_builder = Command::new("pandoc");
@@ -78,7 +82,10 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     let pdf_temp_path = Builder::new()
         .suffix(".pdf")
         .tempfile()
-        .map_err(ConvertError::IO)?
+        .map_err(|e| {
+            error!("Failed to create temporary PDF file: {}", e);
+            ConvertError::IO(e)
+        })?
         .into_temp_path();
     let pdf_path = pdf_temp_path
         .to_str()
@@ -96,75 +103,135 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     );
 
     // Handle CSS
-    let mut css_file;
-    if form.css.is_some() {
-        css_file = Builder::new()
+    if let Some(css) = &form.css {
+        let mut css_file = Builder::new()
             .suffix(".css")
             .tempfile()
-            .map_err(ConvertError::IO)?;
+            .map_err(|e| {
+                error!("Failed to create temporary CSS file: {}", e);
+                ConvertError::IO(e)
+            })?;
         css_file
-            .write_all(form.css.as_ref().unwrap().as_bytes())
-            .map_err(ConvertError::IO)?;
+            .write_all(css.as_bytes())
+            .map_err(|e| {
+                error!("Failed to write to temporary CSS file: {}", e);
+                ConvertError::IO(e)
+            })?;
         pandoc_builder.arg("--css=".to_owned() + css_file.path().to_str().unwrap());
     }
 
-    // Handle header template
-    let mut header_file;
-    if form.header_template.is_some() {
-        header_file = Builder::new()
+    use std::env;
+
+// ... existing code ...
+
+// Handle header template
+if let Some(header_template) = &form.header_template {
+    if !header_template.is_empty() {
+        let current_dir = env::current_dir().unwrap();
+        let header_path = current_dir.join(format!("templates/{}", header_template));
+        let header_path = header_path.canonicalize().unwrap(); // Utilisation du chemin absolu
+        if !header_path.exists() {
+            return Err(ConvertError::IO(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Header template file not found",
+            )));
+        }
+        let header_content = fs::read_to_string(&header_path).map_err(|e| {
+            ConvertError::IO(e)
+        })?;
+        let mut header_file = Builder::new()
             .suffix(".html")
             .tempfile()
-            .map_err(ConvertError::IO)?;
+            .map_err(|e| {
+                ConvertError::IO(e)
+            })?;
         header_file
-            .write_all(form.header_template.as_ref().unwrap().as_bytes())
-            .map_err(ConvertError::IO)?;
-        pandoc_builder.arg("--include-in-header=".to_owned() + header_file.path().to_str().unwrap());
+            .write_all(header_content.as_bytes())
+            .map_err(|e| {
+                ConvertError::IO(e)
+            })?;
+        let header_file_path = header_file.into_temp_path();
+        let header_file_path_str = header_file_path.to_str().unwrap();
+        pandoc_builder.arg("--include-in-header=".to_owned() + header_file_path_str);
     }
+}
 
-    // Handle footer template
-    let mut footer_file;
-    if form.footer_template.is_some() {
-        footer_file = Builder::new()
+// Handle footer template
+if let Some(footer_template) = &form.footer_template {
+    if !footer_template.is_empty() {
+        let current_dir = env::current_dir().unwrap();
+        let footer_path = current_dir.join(format!("templates/{}", footer_template));
+        let footer_path = footer_path.canonicalize().unwrap(); // Utilisation du chemin absolu
+        if !footer_path.exists() {
+            return Err(ConvertError::IO(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Footer template file not found",
+            )));
+        }
+        let footer_content = fs::read_to_string(&footer_path).map_err(|e| {
+            ConvertError::IO(e)
+        })?;
+        let mut footer_file = Builder::new()
             .suffix(".html")
             .tempfile()
-            .map_err(ConvertError::IO)?;
+            .map_err(|e| {
+                ConvertError::IO(e)
+            })?;
         footer_file
-            .write_all(form.footer_template.as_ref().unwrap().as_bytes())
-            .map_err(ConvertError::IO)?;
-        pandoc_builder.arg("--include-in-footer=".to_owned() + footer_file.path().to_str().unwrap());
+            .write_all(footer_content.as_bytes())
+            .map_err(|e| {
+                ConvertError::IO(e)
+            })?;
+        let footer_file_path = footer_file.into_temp_path();
+        let footer_file_path_str = footer_file_path.to_str().unwrap();
+        pandoc_builder.arg("--include-after-body=".to_owned() + footer_file_path_str);
     }
+}
 
-    // We can avoid writing the input to a file by streaming it to STDIN
     let stdin = Stdio::piped();
     pandoc_builder.stdin(stdin);
 
     pandoc_builder.stdout(Stdio::piped()).stderr(Stdio::piped());
 
-    let mut pandoc_process = pandoc_builder.spawn().map_err(ConvertError::IO)?;
+    let mut pandoc_process = pandoc_builder.spawn().map_err(|e| {
+        error!("Failed to spawn pandoc process: {}", e);
+        ConvertError::IO(e)
+    })?;
 
     pandoc_process
         .stdin
         .as_mut()
         .unwrap()
         .write_all(form.markdown.as_bytes())
-        .map_err(ConvertError::IO)?;
+        .map_err(|e| {
+            error!("Failed to write to pandoc stdin: {}", e);
+            ConvertError::IO(e)
+        })?;
 
     let output = pandoc_process
         .wait_with_output()
-        .map_err(ConvertError::IO)?;
+        .map_err(|e| {
+            error!("Failed to wait for pandoc process: {}", e);
+            ConvertError::IO(e)
+        })?;
     debug!("{:?}", output);
 
     if !output.status.success() {
+        error!("Pandoc process failed with output: {:?}", output);
         return Err(ConvertError::Output(output));
     }
 
     NamedFile::open(Path::new(pdf_path))
         .await
-        .map_err(ConvertError::IO)
+        .map_err(|e| {
+            error!("Failed to open generated PDF file: {}", e);
+            ConvertError::IO(e)
+        })
 }
 
 #[launch]
 fn rocket() -> _ {
+    env_logger::init();
     // https://github.com/lawliet89/rocket_cors/blob/v0.5.2/examples/fairing.rs
     let cors = CorsOptions::default()
         .allowed_origins(AllowedOrigins::all())
@@ -174,10 +241,12 @@ fn rocket() -> _ {
                 .map(From::from)
                 .collect(),
         )
-        .to_cors();
+        .allow_credentials(true)
+        .to_cors()
+        .expect("Error creating CORS fairing");
 
     rocket::build()
-        .attach(cors.unwrap())
+        .attach(cors)
         .mount("/", routes![convert])
-        .mount("/", FileServer::from("static"))
+        .mount("/static", FileServer::from("static"))
 }
