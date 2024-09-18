@@ -5,6 +5,7 @@ extern crate rocket;
 extern crate log;
 
 use core::fmt;
+use env_logger;
 use rocket::form::Form;
 use rocket::fs::{FileServer, NamedFile};
 use rocket::http::{ContentType, Method, Status};
@@ -17,7 +18,6 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use tempfile::Builder;
-use env_logger;
 
 #[derive(FromFormField)]
 enum PdfEngine {
@@ -74,6 +74,8 @@ impl<'r> Responder<'r, 'static> for ConvertError {
 
 // ... existing code ...
 
+// ... existing code ...
+
 #[post("/", data = "<form>")]
 async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     let mut pandoc_builder = Command::new("pandoc");
@@ -85,11 +87,8 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
         .map_err(|e| {
             error!("Failed to create temporary PDF file: {}", e);
             ConvertError::IO(e)
-        })?
-        .into_temp_path();
-    let pdf_path = pdf_temp_path
-        .to_str()
-        .expect("Can not deal with non UTF-8 path.");
+        })?;
+    let pdf_path = pdf_temp_path.path().to_str().expect("Can not deal with non UTF-8 path.");
     pandoc_builder.arg("--output=".to_owned() + pdf_path);
 
     pandoc_builder.arg(
@@ -103,7 +102,7 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     );
 
     // Handle CSS
-    if let Some(css) = &form.css {
+    let css_temp_path = if let Some(css) = &form.css {
         let mut css_file = Builder::new()
             .suffix(".css")
             .tempfile()
@@ -117,76 +116,100 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
                 error!("Failed to write to temporary CSS file: {}", e);
                 ConvertError::IO(e)
             })?;
-        pandoc_builder.arg("--css=".to_owned() + css_file.path().to_str().unwrap());
-    }
+        let css_file_path = css_file.into_temp_path();
+        let css_file_path_str = css_file_path.to_str().unwrap();
+        debug!("CSS file created at: {}", css_file_path_str);
+        pandoc_builder.arg("--css=".to_owned() + css_file_path_str);
+        Some(css_file_path)
+    } else {
+        None
+    };
 
     use std::env;
 
-// ... existing code ...
-
-// Handle header template
-if let Some(header_template) = &form.header_template {
-    if !header_template.is_empty() {
-        let current_dir = env::current_dir().unwrap();
-        let header_path = current_dir.join(format!("templates/{}", header_template));
-        let header_path = header_path.canonicalize().unwrap(); // Utilisation du chemin absolu
-        if !header_path.exists() {
-            return Err(ConvertError::IO(io::Error::new(
-                io::ErrorKind::NotFound,
-                "Header template file not found",
-            )));
+    // Handle header template
+    let _header_temp_path = if let Some(header_template) = &form.header_template {
+        if !header_template.is_empty() {
+            let current_dir = env::current_dir().unwrap();
+            let header_path = current_dir.join(format!("templates/{}", header_template));
+            let header_path = header_path.canonicalize().unwrap(); // Utilisation du chemin absolu
+            if !header_path.exists() {
+                error!("Header template file not found at: {:?}", header_path);
+                return Err(ConvertError::IO(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "Header template file not found",
+                )));
+            }
+            let header_content = fs::read_to_string(&header_path).map_err(|e| {
+                error!("Failed to read header template file: {}", e);
+                ConvertError::IO(e)
+            })?;
+            let mut header_file = Builder::new()
+                .suffix(".html")
+                .tempfile()
+                .map_err(|e| {
+                    error!("Failed to create temporary header file: {}", e);
+                    ConvertError::IO(e)
+                })?;
+            header_file
+                .write_all(header_content.as_bytes())
+                .map_err(|e| {
+                    error!("Failed to write to temporary header file: {}", e);
+                    ConvertError::IO(e)
+                })?;
+            let header_file_path = header_file.into_temp_path();
+            let header_file_path_str = header_file_path.to_str().unwrap();
+            debug!("Header file created at: {}", header_file_path_str);
+            pandoc_builder.arg("--include-in-header=".to_owned() + header_file_path_str);
+            Some(header_file_path)
+        } else {
+            None
         }
-        let header_content = fs::read_to_string(&header_path).map_err(|e| {
-            ConvertError::IO(e)
-        })?;
-        let mut header_file = Builder::new()
-            .suffix(".html")
-            .tempfile()
-            .map_err(|e| {
-                ConvertError::IO(e)
-            })?;
-        header_file
-            .write_all(header_content.as_bytes())
-            .map_err(|e| {
-                ConvertError::IO(e)
-            })?;
-        let header_file_path = header_file.into_temp_path();
-        let header_file_path_str = header_file_path.to_str().unwrap();
-        pandoc_builder.arg("--include-in-header=".to_owned() + header_file_path_str);
-    }
-}
+    } else {
+        None
+    };
 
-// Handle footer template
-if let Some(footer_template) = &form.footer_template {
-    if !footer_template.is_empty() {
-        let current_dir = env::current_dir().unwrap();
-        let footer_path = current_dir.join(format!("templates/{}", footer_template));
-        let footer_path = footer_path.canonicalize().unwrap(); // Utilisation du chemin absolu
-        if !footer_path.exists() {
-            return Err(ConvertError::IO(io::Error::new(
-                io::ErrorKind::NotFound,
-                "Footer template file not found",
-            )));
+    // Handle footer template
+    let _footer_temp_path = if let Some(footer_template) = &form.footer_template {
+        if !footer_template.is_empty() {
+            let current_dir = env::current_dir().unwrap();
+            let footer_path = current_dir.join(format!("templates/{}", footer_template));
+            let footer_path = footer_path.canonicalize().unwrap(); // Utilisation du chemin absolu
+            if !footer_path.exists() {
+                error!("Footer template file not found at: {:?}", footer_path);
+                return Err(ConvertError::IO(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "Footer template file not found",
+                )));
+            }
+            let footer_content = fs::read_to_string(&footer_path).map_err(|e| {
+                error!("Failed to read footer template file: {}", e);
+                ConvertError::IO(e)
+            })?;
+            let mut footer_file = Builder::new()
+                .suffix(".html")
+                .tempfile()
+                .map_err(|e| {
+                    error!("Failed to create temporary footer file: {}", e);
+                    ConvertError::IO(e)
+                })?;
+            footer_file
+                .write_all(footer_content.as_bytes())
+                .map_err(|e| {
+                    error!("Failed to write to temporary footer file: {}", e);
+                    ConvertError::IO(e)
+                })?;
+            let footer_file_path = footer_file.into_temp_path();
+            let footer_file_path_str = footer_file_path.to_str().unwrap();
+            debug!("Footer file created at: {}", footer_file_path_str);
+            pandoc_builder.arg("--include-after-body=".to_owned() + footer_file_path_str);
+            Some(footer_file_path)
+        } else {
+            None
         }
-        let footer_content = fs::read_to_string(&footer_path).map_err(|e| {
-            ConvertError::IO(e)
-        })?;
-        let mut footer_file = Builder::new()
-            .suffix(".html")
-            .tempfile()
-            .map_err(|e| {
-                ConvertError::IO(e)
-            })?;
-        footer_file
-            .write_all(footer_content.as_bytes())
-            .map_err(|e| {
-                ConvertError::IO(e)
-            })?;
-        let footer_file_path = footer_file.into_temp_path();
-        let footer_file_path_str = footer_file_path.to_str().unwrap();
-        pandoc_builder.arg("--include-after-body=".to_owned() + footer_file_path_str);
-    }
-}
+    } else {
+        None
+    };
 
     let stdin = Stdio::piped();
     pandoc_builder.stdin(stdin);
@@ -228,6 +251,8 @@ if let Some(footer_template) = &form.footer_template {
             ConvertError::IO(e)
         })
 }
+
+// ... existing code ...
 
 #[launch]
 fn rocket() -> _ {
