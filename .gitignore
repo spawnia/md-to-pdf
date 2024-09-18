@@ -14,3 +14,4 @@ docker-compose.override.yml
 # Generated
 *.pdf
 .bash_history
+/templates/*.html
