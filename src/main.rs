@@ -18,6 +18,8 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use tempfile::Builder;
+use emojis::get_by_shortcode;
+use regex::Regex;
 
 #[derive(FromFormField)]
 enum PdfEngine {
@@ -226,11 +228,20 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
         ConvertError::IO(e)
     })?;
 
+    let emoji_regex = Regex::new(r":(\w+):").unwrap();
+    let markdown_with_emojis = emoji_regex.replace_all(&form.markdown, |caps: &regex::Captures| {
+        if let Some(emoji) = get_by_shortcode(&caps[1]) {
+            emoji.to_string()
+        } else {
+            caps[0].to_string()
+        }
+    });
+
     pandoc_process
         .stdin
         .as_mut()
         .unwrap()
-        .write_all(form.markdown.as_bytes())
+        .write_all(markdown_with_emojis.as_bytes())
         .map_err(|e| {
             error!("Failed to write to pandoc stdin: {}", e);
             ConvertError::IO(e)
