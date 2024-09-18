@@ -76,7 +76,6 @@ impl<'r> Responder<'r, 'static> for ConvertError {
 async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
     let mut pandoc_builder = Command::new("pandoc");
 
-    // Pandoc can not perform PDF conversion to STDOUT, so we need a temp file
     let pdf_temp_path = Builder::new()
         .suffix(".pdf")
         .tempfile()
@@ -97,11 +96,9 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
                 .as_str(),
     );
 
-    // Handle CSS
     let css_temp_path = if let Some(css) = &form.css {
         let mut combined_css = String::new();
 
-        // Read default CSS
         let default_css_path = "templates/default.css";
         let default_css = fs::read_to_string(default_css_path).map_err(|e| {
             error!("Failed to read default CSS file: {}", e);
@@ -109,7 +106,6 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
         })?;
         combined_css.push_str(&default_css);
 
-        // Append user-provided CSS
         combined_css.push_str(css);
 
         let mut css_file = Builder::new()
@@ -131,7 +127,6 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
         pandoc_builder.arg("--css=".to_owned() + css_file_path_str);
         Some(css_file_path)
     } else {
-        // Use default CSS if no custom CSS is provided
         let default_css_path = "static/default_fonts.css";
         pandoc_builder.arg("--css=".to_owned() + default_css_path);
         None
@@ -139,12 +134,11 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
 
     use std::env;
 
-    // Handle header template
     let _header_temp_path = if let Some(header_template) = &form.header_template {
         if !header_template.is_empty() {
             let current_dir = env::current_dir().unwrap();
             let header_path = current_dir.join(format!("templates/{}", header_template));
-            let header_path = header_path.canonicalize().unwrap(); // Utilisation du chemin absolu
+            let header_path = header_path.canonicalize().unwrap();
             if !header_path.exists() {
                 error!("Header template file not found at: {:?}", header_path);
                 return Err(ConvertError::IO(io::Error::new(
@@ -181,13 +175,12 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
         None
     };
 
-    // Handle footer template
     let _footer_temp_path = if let Some(footer_template) = &form.footer_template {
         if !footer_template.is_empty() {
             let current_dir = env::current_dir().unwrap();
             let footer_path = current_dir.join(format!("templates/{}", footer_template));
-            let footer_path = footer_path.canonicalize().unwrap(); // Utilisation du chemin absolu
-            if !footer_path.exists() {
+            let footer_path = footer_path.canonicalize().unwrap();
+            if (!footer_path.exists()) {
                 error!("Footer template file not found at: {:?}", footer_path);
                 return Err(ConvertError::IO(io::Error::new(
                     io::ErrorKind::NotFound,
@@ -267,7 +260,6 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
 #[launch]
 fn rocket() -> _ {
     env_logger::init();
-    // https://github.com/lawliet89/rocket_cors/blob/v0.5.2/examples/fairing.rs
     let cors = CorsOptions::default()
         .allowed_origins(AllowedOrigins::all())
         .allowed_methods(
