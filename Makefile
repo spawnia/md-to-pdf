@@ -1,5 +1,5 @@
-dcrust=$$( [ -f /.dockerenv ] && echo "" || echo "docker-compose exec rust")
-dcpandoc=$$( [ -f /.dockerenv ] && echo "" || echo "docker-compose exec pandoc")
+dcrust=$$( [ -f /.dockerenv ] && echo "" || echo "docker compose exec rust")
+dcpandoc=$$( [ -f /.dockerenv ] && echo "" || echo "docker compose exec pandoc")
 
 .PHONY: it
 it: fmt target/debug ## Perform common targets
@@ -13,11 +13,11 @@ setup: dc-build cargo-deps ## Set up the local environment
 
 .PHONY: dc-build
 dc-build: ## Build the local dev image
-	docker-compose build --pull
+	docker compose build --pull
 
 .PHONY: up
 up: ## Bring up the containers
-	[ -f /.dockerenv ] || docker-compose up --detach
+	[ -f /.dockerenv ] || docker compose up --detach
 
 .PHONY: cargo-deps
 cargo-deps: up ## Reinstall cargo dependencies
