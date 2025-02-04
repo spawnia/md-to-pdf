@@ -8,7 +8,7 @@ use core::fmt;
 use env_logger;
 use rocket::form::Form;
 use rocket::fs::{FileServer, NamedFile};
-use rocket::http::{ContentType, Method, Status};
+use rocket::http::{ContentType, Method, Status, Header};
 use rocket::request::Request;
 use rocket::response::{self, Responder, Response};
 use rocket::serde::{json::Json, Serialize}; // <-- Needed for JSON
@@ -19,7 +19,6 @@ use std::io::{self, Write};
 use std::path::{Path};
 use std::process::{Command, Output, Stdio};
 use tempfile::Builder;
-use std::result::Result as StdResult;
 use rocket::Either;
 
 // ------------ PDF Engine enum ------------
@@ -90,6 +89,15 @@ impl<'r> Responder<'r, 'static> for ConvertError {
 struct ConvertResponse {
     /// The download link to retrieve the PDF
     download_url: String,
+}
+
+// Add this struct and implementation
+struct PdfResponse(Response<'static>);
+
+impl<'r> Responder<'r, 'static> for PdfResponse {
+    fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
+        Ok(self.0)
+    }
 }
 
 // ------------ PDF Generation Endpoint ------------
@@ -211,21 +219,39 @@ async fn convert(form: Form<ConvertForm>) -> Result<Either<NamedFile, Json<Conve
         let download_link = format!("/download/{}/{}", client_id, pdf_name);
         Ok(Either::Right(Json(ConvertResponse { download_url: download_link })))
     } else {
-        // Return the PDF file directly
-        Ok(Either::Left(NamedFile::from_file(pdf_temp_path.into_file(), ContentType::PDF).await?))
+        // Return the PDF file directly - fixed version
+        Ok(Either::Left(NamedFile::open(pdf_temp_path.path()).await?))
     }
 }
 
 // ------------ Download Endpoint ------------
 
 #[get("/<client_id>/<pdf_name>")]
-async fn download_pdf(client_id: &str, pdf_name: &str) -> Option<NamedFile> {
+async fn download_pdf(client_id: &str, pdf_name: &str) -> Option<PdfResponse> {
     let path = Path::new("public")
         .join("pdf")
         .join(client_id)
         .join(pdf_name);
 
-    NamedFile::open(path).await.ok()
+    NamedFile::open(path).await.ok().map(|file| {
+        // Ensure the filename has .pdf extension
+        let download_name = if !pdf_name.ends_with(".pdf") {
+            format!("{}.pdf", pdf_name)
+        } else {
+            pdf_name.to_string()
+        };
+
+        PdfResponse(
+            Response::build()
+                .header(ContentType::PDF)
+                .header(Header::new(
+                    "Content-Disposition",
+                    format!("attachment; filename=\"{}\"", download_name)
+                ))
+                .sized_body(None, file.take_file())
+                .finalize()
+        )
+    })
 }
 
 // ------------ Launch ------------

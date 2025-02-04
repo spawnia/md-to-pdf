@@ -48,4 +48,4 @@ test: ## Issue a dummy request against the API
 
 .PHONY: logs
 logs: ## Show the logs
-    docker compose logs -f
+	docker compose logs -f
