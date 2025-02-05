@@ -12,6 +12,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - ai-toolkit-network
 
   pandoc:
     build:
@@ -27,3 +29,9 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - ai-toolkit-network
+
+networks:
+  ai-toolkit-network: 
+    external: true

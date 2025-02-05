@@ -45,3 +45,7 @@ fmt: up ## Format the rust code
 .PHONY: test
 test: ## Issue a dummy request against the API
 	./test.sh
+
+.PHONY: logs
+logs: ## Show the logs
+	docker compose logs -f

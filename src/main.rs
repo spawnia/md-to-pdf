@@ -8,16 +8,20 @@ use core::fmt;
 use env_logger;
 use rocket::form::Form;
 use rocket::fs::{FileServer, NamedFile};
-use rocket::http::{ContentType, Method, Status};
+use rocket::http::{ContentType, Method, Status, Header};
 use rocket::request::Request;
 use rocket::response::{self, Responder, Response};
+use rocket::serde::{json::Json, Serialize}; // <-- Needed for JSON
 use rocket_cors::{AllowedOrigins, CorsOptions};
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path};
 use std::process::{Command, Output, Stdio};
 use tempfile::Builder;
+use rocket::Either;
+
+// ------------ PDF Engine enum ------------
 
 #[derive(FromFormField)]
 enum PdfEngine {
@@ -36,6 +40,8 @@ impl Display for PdfEngine {
     }
 }
 
+// ------------ Form Data ------------
+
 #[derive(FromForm)]
 struct ConvertForm {
     markdown: String,
@@ -43,7 +49,13 @@ struct ConvertForm {
     engine: Option<PdfEngine>,
     header_template: Option<String>,
     footer_template: Option<String>,
+
+    // NEW: Optional fields for saving the file permanently
+    client_id: Option<String>,
+    pdf_name: Option<String>,
 }
+
+// ------------ Error Handling ------------
 
 #[derive(Debug)]
 enum ConvertError {
@@ -67,78 +79,76 @@ impl<'r> Responder<'r, 'static> for ConvertError {
                 .status(Status::BadRequest),
             ConvertError::IO(_) => builder.status(Status::InternalServerError),
         };
-
         builder.ok()
     }
 }
 
+// ------------ JSON response when we do have clientId/pdfName ------------
+
+#[derive(Serialize)]
+struct ConvertResponse {
+    /// The download link to retrieve the PDF
+    download_url: String,
+}
+
+// Add this struct and implementation
+struct PdfResponse(Response<'static>);
+
+impl<'r> Responder<'r, 'static> for PdfResponse {
+    fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
+        Ok(self.0)
+    }
+}
+
+// ------------ PDF Generation Endpoint ------------
+
 #[post("/", data = "<form>")]
-async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
+async fn convert(form: Form<ConvertForm>) -> Result<Either<NamedFile, Json<ConvertResponse>>, ConvertError> {
+    let form_data = form.into_inner();
+
+    // Start building pandoc command
     let mut pandoc_builder = Command::new("pandoc");
 
+    // Create a temporary PDF
     let pdf_temp_path = Builder::new()
         .suffix(".pdf")
-        .tempfile()
-        .map_err(|e| {
-            error!("Failed to create temporary PDF file: {}", e);
-            ConvertError::IO(e)
-        })?;
-    let pdf_path = pdf_temp_path.path().to_str().expect("Can not deal with non UTF-8 path.");
-    pandoc_builder.arg("--output=".to_owned() + pdf_path);
+        .tempfile()?;
+    let pdf_path = pdf_temp_path
+        .path()
+        .to_str()
+        .expect("Non UTF-8 path not supported");
+    pandoc_builder.arg(format!("--output={}", pdf_path));
 
-    pandoc_builder.arg(
-        "--pdf-engine=".to_owned()
-            + form
-                .engine
-                .as_ref()
-                .unwrap_or(&PdfEngine::Weasyprint)
-                .to_string()
-                .as_str(),
-    );
+    // Choose the PDF engine, default to Weasyprint
+    let engine = form_data.engine.unwrap_or(PdfEngine::Weasyprint);
+    pandoc_builder.arg(format!("--pdf-engine={}", engine));
 
-    let css_temp_path = if let Some(css) = &form.css {
-        let mut combined_css = String::new();
-
+    // Handle CSS
+    if let Some(css) = form_data.css {
+        // Combine default and custom
         let default_css_path = "templates/default.css";
-        let default_css = fs::read_to_string(default_css_path).map_err(|e| {
-            error!("Failed to read default CSS file: {}", e);
-            ConvertError::IO(e)
-        })?;
-        combined_css.push_str(&default_css);
+        let default_css = fs::read_to_string(default_css_path)?;
+        let combined_css = format!("{}{}", default_css, css);
 
-        combined_css.push_str(css);
-
-        let mut css_file = Builder::new()
-            .suffix(".css")
-            .tempfile()
-            .map_err(|e| {
-                error!("Failed to create temporary CSS file: {}", e);
-                ConvertError::IO(e)
-            })?;
-        css_file
-            .write_all(combined_css.as_bytes())
-            .map_err(|e| {
-                error!("Failed to write to temporary CSS file: {}", e);
-                ConvertError::IO(e)
-            })?;
+        let mut css_file = Builder::new().suffix(".css").tempfile()?;
+        css_file.write_all(combined_css.as_bytes())?;
         let css_file_path = css_file.into_temp_path();
         let css_file_path_str = css_file_path.to_str().unwrap();
-        debug!("CSS file created at: {}", css_file_path_str);
-        pandoc_builder.arg("--css=".to_owned() + css_file_path_str);
-        Some(css_file_path)
+        pandoc_builder.arg(format!("--css={}", css_file_path_str));
     } else {
+        // Use a default css if none given
         let default_css_path = "static/default_fonts.css";
-        pandoc_builder.arg("--css=".to_owned() + default_css_path);
-        None
-    };
+        pandoc_builder.arg(format!("--css={}", default_css_path));
+    }
 
     use std::env;
 
-    let _header_temp_path = if let Some(header_template) = &form.header_template {
+    // Handle header template
+    if let Some(header_template) = form_data.header_template {
         if !header_template.is_empty() {
             let current_dir = env::current_dir().unwrap();
             let header_path = current_dir.join(format!("templates/{}", header_template));
-            let header_path = header_path.canonicalize().unwrap();
+            let header_path = header_path.canonicalize()?;
             if !header_path.exists() {
                 error!("Header template file not found at: {:?}", header_path);
                 return Err(ConvertError::IO(io::Error::new(
@@ -146,116 +156,112 @@ async fn convert(form: Form<ConvertForm>) -> Result<NamedFile, ConvertError> {
                     "Header template file not found",
                 )));
             }
-            let header_content = fs::read_to_string(&header_path).map_err(|e| {
-                error!("Failed to read header template file: {}", e);
-                ConvertError::IO(e)
-            })?;
-            let mut header_file = Builder::new()
-                .suffix(".html")
-                .tempfile()
-                .map_err(|e| {
-                    error!("Failed to create temporary header file: {}", e);
-                    ConvertError::IO(e)
-                })?;
-            header_file
-                .write_all(header_content.as_bytes())
-                .map_err(|e| {
-                    error!("Failed to write to temporary header file: {}", e);
-                    ConvertError::IO(e)
-                })?;
+            let header_content = fs::read_to_string(&header_path)?;
+            let mut header_file = Builder::new().suffix(".html").tempfile()?;
+            header_file.write_all(header_content.as_bytes())?;
             let header_file_path = header_file.into_temp_path();
             let header_file_path_str = header_file_path.to_str().unwrap();
-            debug!("Header file created at: {}", header_file_path_str);
-            pandoc_builder.arg("--include-in-header=".to_owned() + header_file_path_str);
-            Some(header_file_path)
-        } else {
-            None
+            pandoc_builder.arg(format!("--include-in-header={}", header_file_path_str));
         }
-    } else {
-        None
-    };
+    }
 
-    let _footer_temp_path = if let Some(footer_template) = &form.footer_template {
+    // Handle footer template
+    if let Some(footer_template) = form_data.footer_template {
         if !footer_template.is_empty() {
             let current_dir = env::current_dir().unwrap();
             let footer_path = current_dir.join(format!("templates/{}", footer_template));
-            let footer_path = footer_path.canonicalize().unwrap();
-            if (!footer_path.exists()) {
+            let footer_path = footer_path.canonicalize()?;
+            if !footer_path.exists() {
                 error!("Footer template file not found at: {:?}", footer_path);
                 return Err(ConvertError::IO(io::Error::new(
                     io::ErrorKind::NotFound,
                     "Footer template file not found",
                 )));
             }
-            let footer_content = fs::read_to_string(&footer_path).map_err(|e| {
-                error!("Failed to read footer template file: {}", e);
-                ConvertError::IO(e)
-            })?;
-            let mut footer_file = Builder::new()
-                .suffix(".html")
-                .tempfile()
-                .map_err(|e| {
-                    error!("Failed to create temporary footer file: {}", e);
-                    ConvertError::IO(e)
-                })?;
-            footer_file
-                .write_all(footer_content.as_bytes())
-                .map_err(|e| {
-                    error!("Failed to write to temporary footer file: {}", e);
-                    ConvertError::IO(e)
-                })?;
+            let footer_content = fs::read_to_string(&footer_path)?;
+            let mut footer_file = Builder::new().suffix(".html").tempfile()?;
+            footer_file.write_all(footer_content.as_bytes())?;
             let footer_file_path = footer_file.into_temp_path();
             let footer_file_path_str = footer_file_path.to_str().unwrap();
-            debug!("Footer file created at: {}", footer_file_path_str);
-            pandoc_builder.arg("--include-after-body=".to_owned() + footer_file_path_str);
-            Some(footer_file_path)
-        } else {
-            None
+            pandoc_builder.arg(format!("--include-after-body={}", footer_file_path_str));
         }
-    } else {
-        None
-    };
+    }
 
-    let stdin = Stdio::piped();
-    pandoc_builder.stdin(stdin);
-
+    pandoc_builder.stdin(Stdio::piped());
     pandoc_builder.stdout(Stdio::piped()).stderr(Stdio::piped());
 
-    let mut pandoc_process = pandoc_builder.spawn().map_err(|e| {
-        error!("Failed to spawn pandoc process: {}", e);
-        ConvertError::IO(e)
-    })?;
-
+    // Spawn pandoc
+    let mut pandoc_process = pandoc_builder.spawn()?;
+    // Write the markdown to pandoc
     pandoc_process
         .stdin
         .as_mut()
         .unwrap()
-        .write_all(form.markdown.as_bytes())
-        .map_err(|e| {
-            error!("Failed to write to pandoc stdin: {}", e);
-            ConvertError::IO(e)
-        })?;
-
-    let output = pandoc_process
-        .wait_with_output()
-        .map_err(|e| {
-            error!("Failed to wait for pandoc process: {}", e);
-            ConvertError::IO(e)
-        })?;
-    debug!("{:?}", output);
+        .write_all(form_data.markdown.as_bytes())?;
+    let output = pandoc_process.wait_with_output()?;
 
     if !output.status.success() {
         error!("Pandoc process failed with output: {:?}", output);
         return Err(ConvertError::Output(output));
     }
 
-    NamedFile::open(Path::new(pdf_path))
-        .await
-        .map_err(|e| {
-            error!("Failed to open generated PDF file: {}", e);
-            ConvertError::IO(e)
-        })
+    // If we got clientId/pdfName, store the PDF and return JSON link
+    if let (Some(client_id), Some(pdf_name)) = (form_data.client_id, form_data.pdf_name) {
+        // Make sure the directory exists
+        let client_dir = Path::new("public").join("pdf").join(&client_id);
+        fs::create_dir_all(&client_dir)?;
+
+        // Ensure pdf_name has .pdf extension
+        let final_pdf_name = if !pdf_name.ends_with(".pdf") {
+            format!("{}.pdf", pdf_name)
+        } else {
+            pdf_name
+        };
+
+        // Copy from temp to final location
+        let out_path = client_dir.join(&final_pdf_name);
+        fs::copy(pdf_path, &out_path)?;
+
+        // Return a JSON with the link to download
+        let download_link = format!("/download/{}/{}", client_id, final_pdf_name);
+        Ok(Either::Right(Json(ConvertResponse { download_url: download_link })))
+    } else {
+        // Return the PDF file directly - fixed version
+        Ok(Either::Left(NamedFile::open(pdf_temp_path.path()).await?))
+    }
 }
+
+// ------------ Download Endpoint ------------
+
+#[get("/<client_id>/<pdf_name>")]
+async fn download_pdf(client_id: &str, pdf_name: &str) -> Option<PdfResponse> {
+    let path = Path::new("public")
+        .join("pdf")
+        .join(client_id)
+        .join(pdf_name);
+
+    NamedFile::open(path).await.ok().map(|file| {
+        // Ensure the filename has .pdf extension
+        let download_name = if !pdf_name.ends_with(".pdf") {
+            format!("{}.pdf", pdf_name)
+        } else {
+            pdf_name.to_string()
+        };
+
+        PdfResponse(
+            Response::build()
+                .header(ContentType::PDF)
+                .header(Header::new(
+                    "Content-Disposition",
+                    format!("attachment; filename=\"{}\"", download_name)
+                ))
+                .sized_body(None, file.take_file())
+                .finalize()
+        )
+    })
+}
+
+// ------------ Launch ------------
 
 #[launch]
 fn rocket() -> _ {
@@ -274,6 +280,13 @@ fn rocket() -> _ {
 
     rocket::build()
         .attach(cors)
+        // mount our PDF-generation route at "/"
         .mount("/", routes![convert])
+        // mount our public static files if we want
         .mount("/static", FileServer::from("static"))
+        // mount our explicit download route for saved PDFs
+        .mount("/download", routes![download_pdf])
 }
+
+
+
