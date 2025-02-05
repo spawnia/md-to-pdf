@@ -211,12 +211,19 @@ async fn convert(form: Form<ConvertForm>) -> Result<Either<NamedFile, Json<Conve
         let client_dir = Path::new("public").join("pdf").join(&client_id);
         fs::create_dir_all(&client_dir)?;
 
+        // Ensure pdf_name has .pdf extension
+        let final_pdf_name = if !pdf_name.ends_with(".pdf") {
+            format!("{}.pdf", pdf_name)
+        } else {
+            pdf_name
+        };
+
         // Copy from temp to final location
-        let out_path = client_dir.join(&pdf_name);
+        let out_path = client_dir.join(&final_pdf_name);
         fs::copy(pdf_path, &out_path)?;
 
         // Return a JSON with the link to download
-        let download_link = format!("/download/{}/{}", client_id, pdf_name);
+        let download_link = format!("/download/{}/{}", client_id, final_pdf_name);
         Ok(Either::Right(Json(ConvertResponse { download_url: download_link })))
     } else {
         // Return the PDF file directly - fixed version
