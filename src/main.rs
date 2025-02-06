@@ -20,6 +20,7 @@ use std::path::{Path};
 use std::process::{Command, Output, Stdio};
 use tempfile::Builder;
 use rocket::Either;
+use std::env;
 
 // ------------ PDF Engine enum ------------
 
@@ -141,49 +142,52 @@ async fn convert(form: Form<ConvertForm>) -> Result<Either<NamedFile, Json<Conve
         pandoc_builder.arg(format!("--css={}", default_css_path));
     }
 
-    use std::env;
+    // Create vectors to hold our temp files so they stay alive through the pandoc execution
+    let mut temp_files = Vec::new();
 
     // Handle header template
     if let Some(header_template) = form_data.header_template {
         if !header_template.is_empty() {
+            // Always look in templates directory
             let current_dir = env::current_dir().unwrap();
-            let header_path = current_dir.join(format!("templates/{}", header_template));
-            let header_path = header_path.canonicalize()?;
-            if !header_path.exists() {
+            let header_path = current_dir.join("templates").join(&header_template);
+            if header_path.exists() {
+                let header_content = fs::read_to_string(&header_path)?;
+                let mut header_file = Builder::new().suffix(".html").tempfile()?;
+                header_file.write_all(header_content.as_bytes())?;
+                let header_path = header_file.path().to_str().unwrap().to_string();
+                pandoc_builder.arg(format!("--include-in-header={}", header_path));
+                temp_files.push(header_file);
+            } else {
                 error!("Header template file not found at: {:?}", header_path);
                 return Err(ConvertError::IO(io::Error::new(
                     io::ErrorKind::NotFound,
                     "Header template file not found",
                 )));
             }
-            let header_content = fs::read_to_string(&header_path)?;
-            let mut header_file = Builder::new().suffix(".html").tempfile()?;
-            header_file.write_all(header_content.as_bytes())?;
-            let header_file_path = header_file.into_temp_path();
-            let header_file_path_str = header_file_path.to_str().unwrap();
-            pandoc_builder.arg(format!("--include-in-header={}", header_file_path_str));
         }
     }
 
     // Handle footer template
     if let Some(footer_template) = form_data.footer_template {
         if !footer_template.is_empty() {
+            // Always look in templates directory
             let current_dir = env::current_dir().unwrap();
-            let footer_path = current_dir.join(format!("templates/{}", footer_template));
-            let footer_path = footer_path.canonicalize()?;
-            if !footer_path.exists() {
+            let footer_path = current_dir.join("templates").join(&footer_template);
+            if footer_path.exists() {
+                let footer_content = fs::read_to_string(&footer_path)?;
+                let mut footer_file = Builder::new().suffix(".html").tempfile()?;
+                footer_file.write_all(footer_content.as_bytes())?;
+                let footer_path = footer_file.path().to_str().unwrap().to_string();
+                pandoc_builder.arg(format!("--include-after-body={}", footer_path));
+                temp_files.push(footer_file);
+            } else {
                 error!("Footer template file not found at: {:?}", footer_path);
                 return Err(ConvertError::IO(io::Error::new(
                     io::ErrorKind::NotFound,
                     "Footer template file not found",
                 )));
             }
-            let footer_content = fs::read_to_string(&footer_path)?;
-            let mut footer_file = Builder::new().suffix(".html").tempfile()?;
-            footer_file.write_all(footer_content.as_bytes())?;
-            let footer_file_path = footer_file.into_temp_path();
-            let footer_file_path_str = footer_file_path.to_str().unwrap();
-            pandoc_builder.arg(format!("--include-after-body={}", footer_file_path_str));
         }
     }
 
@@ -199,6 +203,8 @@ async fn convert(form: Form<ConvertForm>) -> Result<Either<NamedFile, Json<Conve
         .unwrap()
         .write_all(form_data.markdown.as_bytes())?;
     let output = pandoc_process.wait_with_output()?;
+
+    // temp_files will be dropped here, after pandoc is done
 
     if !output.status.success() {
         error!("Pandoc process failed with output: {:?}", output);
