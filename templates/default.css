@@ -1,3 +1,155 @@
+/* Base styles */
 body {
     font-family: 'Helvetica', 'Arial', sans-serif;
+    line-height: 1.6;
+    color: #333;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2em;
+}
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+    color: #2c3e50;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    page-break-after: avoid;
+}
+
+h1 { font-size: 2.2em; border-bottom: 2px solid #2c3e50; padding-bottom: 0.3em; }
+h2 { font-size: 1.8em; border-bottom: 1px solid #ddd; }
+h3 { font-size: 1.5em; }
+h4 { font-size: 1.3em; }
+
+/* Tables */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    background: #fff;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+tr:nth-child(even) { background-color: #f8f9fa; }
+tr:hover { background-color: #f5f5f5; }
+
+/* Lists */
+ul, ol {
+    padding-left: 2em;
+    margin: 1em 0;
+}
+
+li { margin: 0.5em 0; }
+
+/* Links */
+a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+a:hover { text-decoration: underline; }
+
+/* Call to action link */
+a[href*="aismarttalk.tech"] {
+    color: #e74c3c;
+    font-weight: bold;
+    display: block;
+    margin: 2em 0;
+    padding: 1em;
+    border: 2px solid #e74c3c;
+    border-radius: 5px;
+    text-align: center;
+}
+
+/* Emphasis and alerts */
+strong { color: #2c3e50; }
+em { color: #7f8c8d; }
+
+/* Custom classes for status indicators */
+.success, .warning, .danger {
+    padding: 0.5em;
+    margin: 1em 0;
+    border-radius: 4px;
+}
+
+.success {
+    background-color: #dff0d8;
+    border-left: 4px solid #3c763d;
+}
+
+.warning {
+    background-color: #fcf8e3;
+    border-left: 4px solid #8a6d3b;
+}
+
+.danger {
+    background-color: #f2dede;
+    border-left: 4px solid #a94442;
+}
+
+/* Page breaks */
+@page {
+    margin: 2cm;
+}
+
+/* Avoid page breaks inside important elements */
+table, figure, li {
+    page-break-inside: avoid;
+}
+
+/* Print-specific styles */
+@media print {
+    body {
+        font-size: 12pt;
+    }
+    
+    a {
+        text-decoration: none;
+    }
+    
+    a[href^="http"]:after {
+        content: " (" attr(href) ")";
+        font-size: 90%;
+        color: #666;
+    }
+}
+
+/* Emoji size consistency */
+.emoji {
+    font-size: 1.2em;
+    vertical-align: middle;
+}
+
+/* Block quotes */
+blockquote {
+    border-left: 4px solid #ddd;
+    margin: 1em 0;
+    padding-left: 1em;
+    color: #666;
+}
+
+/* Code blocks */
+code {
+    background: #f8f9fa;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+/* Horizontal rules */
+hr {
+    border: none;
+    border-top: 2px solid #ddd;
+    margin: 2em 0;
 }

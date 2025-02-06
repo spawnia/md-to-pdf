@@ -125,22 +125,21 @@ async fn convert(form: Form<ConvertForm>) -> Result<Either<NamedFile, Json<Conve
     pandoc_builder.arg(format!("--pdf-engine={}", engine));
 
     // Handle CSS
-    if let Some(css) = form_data.css {
-        // Combine default and custom
-        let default_css_path = "templates/default.css";
-        let default_css = fs::read_to_string(default_css_path)?;
-        let combined_css = format!("{}{}", default_css, css);
-
-        let mut css_file = Builder::new().suffix(".css").tempfile()?;
-        css_file.write_all(combined_css.as_bytes())?;
-        let css_file_path = css_file.into_temp_path();
-        let css_file_path_str = css_file_path.to_str().unwrap();
-        pandoc_builder.arg(format!("--css={}", css_file_path_str));
+    let default_css_path = "templates/default.css";
+    let default_css = fs::read_to_string(default_css_path)?;
+    
+    let css_content = if let Some(css) = form_data.css {
+        // Combine default and custom CSS
+        format!("{}{}", default_css, css)
     } else {
-        // Use a default css if none given
-        let default_css_path = "static/default_fonts.css";
-        pandoc_builder.arg(format!("--css={}", default_css_path));
-    }
+        default_css
+    };
+
+    let mut css_file = Builder::new().suffix(".css").tempfile()?;
+    css_file.write_all(css_content.as_bytes())?;
+    let css_file_path = css_file.into_temp_path();
+    let css_file_path_str = css_file_path.to_str().unwrap();
+    pandoc_builder.arg(format!("--css={}", css_file_path_str));
 
     // Create vectors to hold our temp files so they stay alive through the pandoc execution
     let mut temp_files = Vec::new();
