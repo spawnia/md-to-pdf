@@ -50,10 +50,9 @@ struct ConvertForm {
     engine: Option<PdfEngine>,
     header_template: Option<String>,
     footer_template: Option<String>,
-
-    // NEW: Optional fields for saving the file permanently
     client_id: Option<String>,
     pdf_name: Option<String>,
+    blurred_paragraphs: Option<Vec<usize>>,
 }
 
 // ------------ Error Handling ------------
@@ -106,9 +105,32 @@ impl<'r> Responder<'r, 'static> for PdfResponse {
 #[post("/", data = "<form>")]
 async fn convert(form: Form<ConvertForm>) -> Result<Either<NamedFile, Json<ConvertResponse>>, ConvertError> {
     let form_data = form.into_inner();
+    
+    // Use a completely different approach with raw HTML block that won't be processed by Markdown
+    let censor_replacement = "<div style=\"width:100% !important; max-width:100% !important; margin-top:0 !important; margin-bottom:0 !important; margin-left:0 !important; margin-right:0 !important; padding:0 !important; overflow:hidden !important; position:relative !important; left:0 !important; right:auto !important; box-sizing:border-box !important; text-align:left !important;\"><img src=\"static/blured.png\" alt=\"CONTENU PREMIUM - Achetez le rapport complet\" style=\"width:100% !important; height:auto !important; display:block !important; margin:0 !important; padding:0 !important; float:none !important;\"></div>";
+    
+    // Process with multiple different formats of the tag to ensure we catch it
+    let mut processed_markdown = form_data.markdown.clone();
+    processed_markdown = processed_markdown.replace("{{CENSOR}}", censor_replacement);
+    processed_markdown = processed_markdown.replace("<CENSOR>", censor_replacement);
+    processed_markdown = processed_markdown.replace("{{ CENSOR }}", censor_replacement);
+    processed_markdown = processed_markdown.replace("{{CENSOR }}", censor_replacement);
+    processed_markdown = processed_markdown.replace("{{ CENSOR}}", censor_replacement);
+    
+    println!("Final processed markdown: {}", processed_markdown);
 
     // Start building pandoc command
     let mut pandoc_builder = Command::new("pandoc");
+    // Make sure HTML is preserved raw
+    pandoc_builder.arg("--from=markdown+raw_html");
+    // Ensure output is properly formatted
+    pandoc_builder.arg("--standalone");
+    // Use HTML5 output
+    pandoc_builder.arg("--to=html5");
+    
+    // Add page geometry options for better handling of full-width elements
+    pandoc_builder.arg("--variable=geometry:margin=1.5cm");
+    pandoc_builder.arg("--variable=papersize=a4");
 
     // Create a temporary PDF
     let pdf_temp_path = Builder::new()
@@ -195,12 +217,12 @@ async fn convert(form: Form<ConvertForm>) -> Result<Either<NamedFile, Json<Conve
 
     // Spawn pandoc
     let mut pandoc_process = pandoc_builder.spawn()?;
-    // Write the markdown to pandoc
+    // Write the processed markdown to pandoc
     pandoc_process
         .stdin
         .as_mut()
         .unwrap()
-        .write_all(form_data.markdown.as_bytes())?;
+        .write_all(processed_markdown.as_bytes())?;
     let output = pandoc_process.wait_with_output()?;
 
     // temp_files will be dropped here, after pandoc is done

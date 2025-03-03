@@ -3,9 +3,99 @@ body {
     font-family: 'Helvetica', 'Arial', sans-serif;
     line-height: 1.6;
     color: #333;
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
     padding: 2em;
+    text-align: left;
+}
+
+/* Reset all margins and paddings for specific elements */
+p, div, img {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    text-align: left !important;
+}
+
+/* Make images responsive */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0;
+}
+
+/* Special class for censored images - NO MARGINS, FULL WIDTH */
+img[alt*="CONTENU PREMIUM"] {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    border: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    filter: blur(0) !important;
+    position: relative !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: none !important;
+}
+
+/* PDF-specific settings for blurred content */
+@page {
+    size: a4;
+    margin: 2cm;
+    padding: 0;
+}
+
+div:has(> img[alt*="CONTENU PREMIUM"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    text-align: left !important;
+}
+
+/* Blur effect for paragraphs */
+.blur {
+    filter: blur(15px);
+    -webkit-filter: blur(15px);
+    user-select: none;
+    pointer-events: none;
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 1.5em;
+    border-radius: 8px;
+    margin: 1.5em 0;
+    position: relative;
+    overflow: hidden;
+    transform: scale(1.02);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    min-height: 100px;
+}
+
+.blur::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 1;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+}
+
+.blur > * {
+    position: relative;
+    z-index: 2;
+    opacity: 0.5;
+    color: #666;
+    font-size: 1.1em;
+    line-height: 1.6;
 }
 
 /* Headers */
