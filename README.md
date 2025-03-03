@@ -1,89 +1,108 @@
-# md-to-pdf
+# 🚀 md-to-pdf by AI SmartTalk
 
-**A modern web service for converting Markdown to PDF with customizable templates and improved fonts.**  
-This project introduces a user-friendly way to convert Markdown to PDF with advanced features such as the use of templates for headers and footers, which can be customized via API calls. The output is further enhanced with better typography for a polished look.
+**A powerful fork of the original md-to-pdf with advanced features for professional document generation.**
 
-## Key Features
-- **Customizable Templates:** Place `.html` files in the `templates` folder and dynamically assign them to headers or footers.
-- **Improved Fonts:** Updated fonts for better readability and a professional PDF output.
-- **Easy-to-Use Web UI:** Convert Markdown to PDF through a simple web interface.
-- **API Integration:** Programmatically convert Markdown to PDF with support for custom CSS and various conversion engines.
+This enhanced version, maintained by [AI SmartTalk](https://aismarttalk.tech), extends the original markdown-to-PDF converter with sophisticated features including customizable headers/footers and intelligent content censoring capabilities.
 
----
+## ✨ Enhanced Features
 
-### Web UI
+- **🔒 Document Censoring:** Selectively blur confidential sections while maintaining document layout
+- **📄 Customizable Headers & Footers:** Apply professional templates to your documents 
+- **🎨 Improved Styling:** Enhanced CSS for better typography and visual presentation
+- **🔄 Multiple PDF Engines:** Support for Weasyprint, Wkhtmltopdf, and Pdflatex
 
-Use the web UI locally. See the [Deploy](#deploy) section for more information.
+## 🔍 How to Use Document Censoring
 
----
+Easily hide sensitive information in your PDFs with our censoring feature:
 
-### API
+```markdown
+# Document with Confidential Information
 
-Convert Markdown programmatically with a simple `POST` request to the API endpoint:
+## Public Section
+This content will remain visible to everyone.
 
-```bash
-curl --data-urlencode 'markdown=# Heading 1' --output md-to-pdf.pdf https://md-to-pdf.fly.dev
+## Restricted Information
+{{CENSOR}}
+
+## Conclusion
+Back to publicly visible content.
 ```
 
-#### Parameters
+The `{{CENSOR}}` tag can be used in any of these formats:
+- `{{CENSOR}}`
+- `<CENSOR>`
+- `{{ CENSOR }}`
+- `{{CENSOR }}`
+- `{{ CENSOR}}`
 
-| Parameter          | Required | Description                                                                                             |
-|--------------------|----------|---------------------------------------------------------------------------------------------------------|
-| `markdown`         | ✔️       | The Markdown content to convert                                                                         |
-| `css`              | ❌       | Optional CSS styles to apply                                                                            |
-| `engine`           | ❌       | Choose from `weasyprint`, `wkhtmltopdf`, or `pdflatex`. Defaults to `weasyprint`                        |
-| `header_template`  | ❌       | Specify a custom header template from the `templates` folder                                             |
-| `footer_template`  | ❌       | Specify a custom footer template from the `templates` folder                                             |
+When converted, censored sections appear as blurred areas, clearly indicating restricted content while preserving document flow.
 
-To send data from a file:
+## 🏷️ Header & Footer Templates
 
-```bash
-curl --data-urlencode "markdown=$(cat example.md)" --output result.pdf https://md-to-pdf.fly.dev
-```
+Create professional documents with custom headers and footers:
 
----
+1. Place your custom template files in the `templates` folder with `.html` extension
+2. Reference them in your API calls with `header_template` and `footer_template` parameters
 
-## Minimal Server Requirements
-1. Operating System: A Linux-based OS (e.g., Ubuntu, Debian).
-2. CPU: At least 2 cores.
-3. RAM: Minimum 2 GB.
-4. Storage: At least 10 GB of free disk space.
-5. Docker: Installed and running.
-6. Network: Open port 8000 for the web service.
+Example templates are included to get you started!
 
----
+## 🔌 API Usage
 
-## Deploy
-
-Run your own instance of the service by using the pre-built container image available on [Docker Hub](https://hub.docker.com/r/spawnia/md-to-pdf):
+Convert Markdown with a simple POST request:
 
 ```bash
-docker run --publish=8000:8000 spawnia/md-to-pdf
+curl --data-urlencode 'markdown=# Heading 1' \
+     --data-urlencode 'header_template=corporate_header.html' \
+     --data-urlencode 'footer_template=page_numbers.html' \
+     --output document.pdf \
+     https://your-deployment-url
 ```
 
-To start the project locally with Docker:
+### Parameters
+
+| Parameter          | Required | Description                                                           |
+|--------------------|----------|-----------------------------------------------------------------------|
+| `markdown`         | ✅       | The Markdown content to convert                                       |
+| `css`              | ❌       | Optional CSS styles to apply                                          |
+| `engine`           | ❌       | Choose from `weasyprint`, `wkhtmltopdf`, or `pdflatex`               |
+| `header_template`  | ❌       | Specify a custom header template from the `templates` folder          |
+| `footer_template`  | ❌       | Specify a custom footer template from the `templates` folder          |
+| `client_id`        | ❌       | Optional client identifier for document tracking                      |
+| `pdf_name`         | ❌       | Custom name for the generated PDF                                     |
+| `blurred_paragraphs`| ❌      | Alternative way to specify paragraphs to blur (array of indexes)      |
+
+## 🔧 Deployment
+
+Run your own instance using Docker:
+
+```bash
+docker run --publish=8000:8000 aismarttalk/md-to-pdf
+```
+
+For local development:
 
 ```bash
 make serve
 ```
 
-This builds the Docker image and starts the Rust-based API server.
+## 🌐 Web Interface
+
+A user-friendly web interface is available for quick conversions at `http://localhost:8000` when running locally.
+
+## 🔄 Compatibility
+
+- Works across all major browsers and operating systems
+- PDFs can be viewed in any standard PDF reader
+- API can be integrated with any system that supports HTTP requests
+
+## 🙏 Acknowledgements
+
+This project is a fork of the original `md-to-pdf` created by [Spawnia](https://github.com/Spawnia/md-to-pdf). We extend our gratitude to the original contributors while adding significant new functionality.
+
+## 📝 License
+
+This project maintains the same license as the original repository.
 
 ---
 
-## Built With
-- [**Rocket**](https://rocket.rs) - A web framework for Rust
-- [**Pandoc**](https://pandoc.org) - A universal document converter
-- [**Codemirror**](https://codemirror.net) - A text editor for the browser
-
----
-
-## Contributing
-
-Contributions are welcome! Fork the repo and submit a pull request. For significant changes, please open an issue first to discuss your ideas.
-
----
-
-## License & Acknowledgements
-
-This project is a fork of the original `md-to-pdf` created by [Spawnia](https://github.com/Spawnia/md-to-pdf). You can find the original version [here](https://github.com/Spawnia/md-to-pdf). Thank you to the original contributors for laying the groundwork for this project.
+Developed with ❤️ by [AI SmartTalk](https://aismarttalk.tech)
