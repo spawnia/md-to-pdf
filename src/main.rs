@@ -52,7 +52,6 @@ struct ConvertForm {
     footer_template: Option<String>,
     client_id: Option<String>,
     pdf_name: Option<String>,
-    blurred_paragraphs: Option<Vec<usize>>,
 }
 
 // ------------ Error Handling ------------
@@ -60,7 +59,7 @@ struct ConvertForm {
 #[derive(Debug)]
 enum ConvertError {
     Output(Output),
-    IO(io::Error),
+    IO(#[allow(dead_code)] io::Error),
 }
 
 impl From<io::Error> for ConvertError {
