@@ -61,7 +61,10 @@ impl<'r> Responder<'r, 'static> for ConvertError {
                 .header(ContentType::Plain)
                 .sized_body(output.stderr.len(), io::Cursor::new(output.stderr))
                 .status(Status::BadRequest),
-            ConvertError::IO(_) => builder.status(Status::InternalServerError),
+            ConvertError::IO(err) => {
+                error!("IO error during conversion: {}", err);
+                builder.status(Status::InternalServerError)
+            }
         };
 
         builder.ok()
@@ -152,7 +155,24 @@ fn rocket() -> _ {
         )
         .to_cors();
 
+    // PDF conversion can take longer, so we increase timeouts for graceful shutdown.
+    // - grace: 30s for ongoing PDF conversions to complete
+    // - mercy: 10s for connection-level shutdown
+    // Rocket defaults: grace=2s, mercy=3s (total 5s).
+    // See: https://api.rocket.rs/v0.5/rocket/config/struct.Shutdown
+    let shutdown_config = rocket::config::Shutdown {
+        ctrlc: true,
+        signals: std::collections::HashSet::from([rocket::config::Sig::Term]),
+        grace: 30,
+        mercy: 10,
+        ..Default::default()
+    };
+
     rocket::build()
+        .configure(rocket::Config {
+            shutdown: shutdown_config,
+            ..Default::default()
+        })
         .attach(cors.unwrap())
         .mount("/", routes![convert])
         .mount("/", FileServer::from("static"))
