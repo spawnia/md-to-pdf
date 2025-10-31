@@ -17,6 +17,7 @@ jobs:
       run: |
         rustup update
         rustup override set nightly
+        rustup component add rustfmt
 
     - name: Check compilation
       run: cargo check --verbose
