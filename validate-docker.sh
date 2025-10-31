@@ -3,18 +3,15 @@
 set -euo pipefail
 
 IMAGE="${1:-md-to-pdf:test}"
-SKIP_BINARY="${2:-false}"
 
 echo "Validating Docker image: ${IMAGE}"
 echo
 
 # Validate md-to-pdf binary can start (timeout after 3s, exit code 124 means it started successfully)
-if [ "${SKIP_BINARY}" = "false" ]; then
-  echo "Testing md-to-pdf binary..."
-  timeout 3 docker run --rm "${IMAGE}" md-to-pdf || [ $? -eq 124 ]
-  echo "✓ md-to-pdf binary works"
-  echo
-fi
+echo "Testing md-to-pdf binary..."
+timeout 3 docker run --rm "${IMAGE}" md-to-pdf || [ $? -eq 124 ]
+echo "✓ md-to-pdf binary works"
+echo
 
 # Validate pandoc
 echo "Testing pandoc..."
