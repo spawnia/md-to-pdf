@@ -1,6 +1,13 @@
 [default]
 address = "0.0.0.0"
 
+# Increase the default of 32KiB to allow for larger Markdown + CSS payloads.
 # https://rocket.rs/guide/v0.5/configuration/#limits
 [default.limits]
 forms = "128KiB"
+
+# Increase timeouts to allow long-running PDF conversions to finish gracefully during shutdown.
+# https://api.rocket.rs/v0.5/rocket/config/struct.Shutdown#example
+[default.shutdown]
+grace = 30
+mercy = 10
