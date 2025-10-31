@@ -61,7 +61,10 @@ impl<'r> Responder<'r, 'static> for ConvertError {
                 .header(ContentType::Plain)
                 .sized_body(output.stderr.len(), io::Cursor::new(output.stderr))
                 .status(Status::BadRequest),
-            ConvertError::IO(_) => builder.status(Status::InternalServerError),
+            ConvertError::IO(err) => {
+                error!("IO error during conversion: {}", err);
+                builder.status(Status::InternalServerError)
+            }
         };
 
         builder.ok()
