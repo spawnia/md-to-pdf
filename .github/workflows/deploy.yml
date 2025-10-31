@@ -1,3 +1,5 @@
+name: Deploy
+
 on:
   push:
     branches:
@@ -8,9 +10,8 @@ env:
 
 jobs:
   deploy:
-
+    name: Deploy to fly.io
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
