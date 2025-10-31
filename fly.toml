@@ -1,8 +1,8 @@
-# fly.toml file generated for md-to-pdf on 2022-08-26T13:27:59+02:00
+# https://fly.io/docs/reference/configuration
 
 app = "md-to-pdf"
 kill_signal = "SIGINT"
-kill_timeout = 5
+kill_timeout = 45
 processes = []
 
 [env]
@@ -18,9 +18,9 @@ processes = []
   protocol = "tcp"
   script_checks = []
   [services.concurrency]
-    hard_limit = 25
-    soft_limit = 20
-    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+    type = "requests"
 
   [[services.ports]]
     force_https = true
