@@ -2,11 +2,11 @@ dcrust=$$( [ -f /.dockerenv ] && echo "" || echo "docker-compose exec rust")
 dcpandoc=$$( [ -f /.dockerenv ] && echo "" || echo "docker-compose exec pandoc")
 
 .PHONY: it
-it: fmt target/debug ## Perform common targets
+it: fmt target/debug test ## Perform common targets
 
 .PHONY: help
 help: ## Displays this list of targets with descriptions
-	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(firstword $(MAKEFILE_LIST)) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[32m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep --extended-regexp '^[a-zA-Z0-9_-]+:.*?## .*$$' $(firstword $(MAKEFILE_LIST)) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[32m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: setup
 setup: dc-build cargo-deps ## Set up the local environment
@@ -42,6 +42,10 @@ serve: up target/debug ## Serve the compiled application
 fmt: up ## Format the rust code
 	${dcrust} cargo fmt
 
+.PHONY: docker-build
+docker-build: ## Build the production Docker image
+	docker build --tag=md-to-pdf:test .
+
 .PHONY: test
-test: ## Issue a dummy request against the API
-	./test.sh
+test: docker-build ## Test the production Docker image
+	./test-docker.sh md-to-pdf:test
