@@ -40,5 +40,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           load: true
 
-      - name: Validate Docker image
-        run: ./validate-docker.sh ${{ steps.meta.outputs.tags }}
+      - name: Test Docker image
+        run: ./test-docker.sh ${{ steps.meta.outputs.tags }}

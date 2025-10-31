@@ -1,4 +1,4 @@
-FROM rustlang/rust:nightly-slim as builder
+FROM rustlang/rust:nightly-slim AS rust
 
 WORKDIR /usr/src/md-to-pdf
 COPY . .
@@ -37,7 +37,7 @@ RUN apt-get update \
  && rm --recursive --force /var/lib/apt/lists/* \
  && pandoc --version
 
-COPY --from=builder /usr/local/cargo/bin/md-to-pdf /usr/local/bin/md-to-pdf
+COPY --from=rust /usr/local/cargo/bin/md-to-pdf /usr/local/bin/md-to-pdf
 
 EXPOSE 8000
 CMD ["md-to-pdf"]
