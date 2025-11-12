@@ -49,21 +49,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  test-single-arch:
-    name: Test single-arch (AMD64)
-    if: github.event_name == 'pull_request'
-    needs: docker
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Test Docker image
+      - name: Test Docker image (PR only)
+        if: github.event_name == 'pull_request'
         run: |
-          # Image was loaded locally during build, use the tag from metadata
-          TAG=$(echo "${{ needs.docker.outputs.tags }}" | head -n 1)
-          echo "Testing tag: ${TAG}"
-          docker images | grep md-to-pdf || true
+          TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
           ./test-docker.sh "${TAG}"
 
   test-multi-arch:
