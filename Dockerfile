@@ -7,8 +7,6 @@ RUN cargo install --path .
 
 FROM debian:trixie-slim
 
-ARG TARGETARCH
-
 RUN apt-get update \
  && apt-get install --yes --no-install-recommends \
       pandoc \
