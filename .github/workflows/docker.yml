@@ -60,11 +60,14 @@ jobs:
 
       - name: Test Docker image
         run: |
+          # Image was loaded locally during build, use the tag from metadata
           TAG=$(echo "${{ needs.docker.outputs.tags }}" | head -n 1)
+          echo "Testing tag: ${TAG}"
+          docker images | grep md-to-pdf || true
           ./test-docker.sh "${TAG}"
 
   test-multi-arch:
-    name: Test ${{ matrix.platform }}
+    name: Test multi-arch
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: docker
     runs-on: ubuntu-latest
