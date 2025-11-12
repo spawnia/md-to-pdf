@@ -3,10 +3,17 @@
 set -euo pipefail
 
 IMAGE="${1:-md-to-pdf:test}"
-PORT="${2:-8001}"
+PLATFORM="${2:-}"
+PORT="${3:-8001}"
 CONTAINER_NAME="md-to-pdf-test-$$"
 
+PLATFORM_FLAG=""
+if [ -n "${PLATFORM}" ]; then
+  PLATFORM_FLAG="--platform=${PLATFORM}"
+fi
+
 echo "Testing Docker image: ${IMAGE}"
+[ -n "${PLATFORM}" ] && echo "Platform: ${PLATFORM}"
 echo
 
 # =============================================================================
@@ -17,23 +24,23 @@ echo "==> Validating tools..."
 echo
 
 echo "Testing md-to-pdf binary..."
-timeout 3 docker run --rm "${IMAGE}" md-to-pdf || [ $? -eq 124 ]
+timeout 3 docker run --rm ${PLATFORM_FLAG} "${IMAGE}" md-to-pdf || [ $? -eq 124 ]
 echo "✓ md-to-pdf binary works"
 
 echo "Testing pandoc..."
-docker run --rm "${IMAGE}" pandoc --version | head --lines=1
+docker run --rm ${PLATFORM_FLAG} "${IMAGE}" pandoc --version | head --lines=1
 echo "✓ pandoc works"
 
 echo "Testing wkhtmltopdf..."
-docker run --rm "${IMAGE}" wkhtmltopdf --version
+docker run --rm ${PLATFORM_FLAG} "${IMAGE}" wkhtmltopdf --version
 echo "✓ wkhtmltopdf works"
 
 echo "Testing pdflatex..."
-docker run --rm "${IMAGE}" pdflatex --version | head --lines=1
+docker run --rm ${PLATFORM_FLAG} "${IMAGE}" pdflatex --version | head --lines=1
 echo "✓ pdflatex works"
 
 echo "Testing weasyprint..."
-docker run --rm "${IMAGE}" weasyprint --version
+docker run --rm ${PLATFORM_FLAG} "${IMAGE}" weasyprint --version
 echo "✓ weasyprint works"
 
 echo
@@ -56,7 +63,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Starting container on port ${PORT}..."
-docker run --detach --name "${CONTAINER_NAME}" --publish "${PORT}:8000" "${IMAGE}"
+docker run --detach --name "${CONTAINER_NAME}" --publish "${PORT}:8000" ${PLATFORM_FLAG} "${IMAGE}"
 
 echo "Waiting for service to be ready..."
 for i in {1..30}; do
