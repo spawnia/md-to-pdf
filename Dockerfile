@@ -28,9 +28,10 @@ RUN apt-get update \
       python3-dev \
       python3-setuptools \
       python3-wheel \
- && wget --quiet https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
- && apt-get install --yes --no-install-recommends ./wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
- && rm wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
+ && ARCH=$(dpkg --print-architecture) \
+ && wget --quiet https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_${ARCH}.deb \
+ && apt-get install --yes --no-install-recommends ./wkhtmltox_0.12.6.1-3.bookworm_${ARCH}.deb \
+ && rm wkhtmltox_0.12.6.1-3.bookworm_${ARCH}.deb \
  && pip3 install --no-cache-dir --break-system-packages weasyprint \
  && apt-get purge --yes build-essential python3-dev python3-setuptools python3-wheel wget \
  && apt-get autoremove --yes \
