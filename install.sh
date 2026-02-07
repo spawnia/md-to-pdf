@@ -51,6 +51,18 @@ then
     sudo usermod -aG docker "$USER"
 
     echo -e "${GREEN}Docker installed. Please log out and log back in to use Docker without sudo.${NC}"
+
+    make dc-build
+    make docker network create ai-toolkit-network
+    make cargo-deps
+    make serve
+
+    echo -e "${GREEN}Installation complete.${NC}"
+
+    chmod +x test.sh
+    ./test.sh
+
+    echo -e "${GREEN}Test complete.${NC}"
 else
     echo -e "${GREEN}Docker is already installed.${NC}"
 fi

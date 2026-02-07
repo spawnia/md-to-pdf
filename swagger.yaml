@@ -1,0 +1,810 @@
+openapi: 3.0.3
+info:
+  title: md-to-pdf Document Engine API
+  description: |
+    Moteur de documents complet : conversion Markdown/HTML/Template vers PDF,
+    preview PNG, fusion, watermark et protection par mot de passe.
+
+    ## Comportement conditionnel des réponses
+
+    La plupart des endpoints de génération PDF acceptent les champs optionnels
+    `client_id` et `pdf_name`. Selon leur présence :
+
+    | `client_id` + `pdf_name` | Réponse |
+    |--------------------------|---------|
+    | **fournis** | Le PDF est sauvegardé sur le serveur et un JSON `{ "download_url": "/download/…" }` est retourné |
+    | **absents** | Le fichier PDF binaire est retourné directement dans le body |
+  version: 1.0.0
+  contact:
+    name: AI SmartTalk
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Développement local
+  - url: https://pdf.aismarttalk.tech
+    description: Production
+
+tags:
+  - name: Convert
+    description: Conversion Markdown → PDF
+  - name: Render
+    description: Rendu de template Tera + données JSON → PDF
+  - name: HTML
+    description: Conversion HTML directe → PDF
+  - name: Preview
+    description: Génération de preview PNG (première page)
+  - name: Merge
+    description: Fusion de plusieurs PDFs
+  - name: Watermark
+    description: Ajout de watermark texte sur un PDF existant
+  - name: Protect
+    description: Protection par mot de passe d'un PDF
+  - name: Download
+    description: Téléchargement de PDFs sauvegardés
+  - name: Health
+    description: Health check du service
+  - name: Legacy
+    description: Endpoint legacy (backward compatible)
+
+paths:
+  # ───────────────────────────────────────────────
+  # Health
+  # ───────────────────────────────────────────────
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Vérifie que le service est opérationnel et retourne la version et les moteurs PDF disponibles.
+      operationId: health
+      responses:
+        "200":
+          description: Service opérationnel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                version: "0.1.0"
+                engines:
+                  - weasyprint
+                  - wkhtmltopdf
+                  - pdflatex
+
+  # ───────────────────────────────────────────────
+  # Convert  (Markdown → PDF)
+  # ───────────────────────────────────────────────
+  /api/convert:
+    post:
+      tags: [Convert]
+      summary: Markdown → PDF
+      description: |
+        Convertit du Markdown en PDF via pandoc + moteur PDF (weasyprint par défaut).
+
+        Supporte les tags CENSOR (`{{CENSOR}}`, `<CENSOR>`, etc.) qui sont remplacés
+        par une image floutée pour le contenu premium.
+
+        `header_html` est prioritaire sur `header_template` (inline > fichier serveur).
+      operationId: convert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConvertRequest"
+            example:
+              markdown: "# Mon Document\n\nContenu en **Markdown**."
+              css: "h1 { color: navy; }"
+              engine: weasyprint
+              options:
+                paper_size: a4
+                orientation: portrait
+                page_numbers: true
+              header_template: "header.html"
+              client_id: "client-123"
+              pdf_name: "rapport-2024"
+      responses:
+        "200":
+          description: PDF généré avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+              example:
+                download_url: "/download/client-123/rapport-2024.pdf"
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ───────────────────────────────────────────────
+  # Render  (Template Tera + JSON → PDF)
+  # ───────────────────────────────────────────────
+  /api/render:
+    post:
+      tags: [Render]
+      summary: Template Tera + données JSON → PDF
+      description: |
+        Rend un template HTML (syntaxe Tera / Jinja2) avec des données JSON,
+        puis convertit le HTML résultant en PDF via weasyprint (sans pandoc).
+
+        Le champ `data` **doit** être un objet JSON (pas un tableau, string, etc.).
+      operationId: render
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenderRequest"
+            example:
+              template: "<html><body><h1>{{ title }}</h1><p>Cher {{ name }},</p><p>{{ body }}</p></body></html>"
+              data:
+                title: "Facture #123"
+                name: "Jean Dupont"
+                body: "Merci pour votre achat."
+              client_id: "client-123"
+              pdf_name: "facture-123"
+      responses:
+        "200":
+          description: PDF généré avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ───────────────────────────────────────────────
+  # HTML to PDF
+  # ───────────────────────────────────────────────
+  /api/html-to-pdf:
+    post:
+      tags: [HTML]
+      summary: HTML → PDF
+      description: |
+        Convertit du HTML brut directement en PDF via weasyprint (pas de pandoc).
+        Idéal pour du HTML déjà construit côté client.
+      operationId: htmlToPdf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HtmlToPdfRequest"
+            example:
+              html: "<html><body><h1>Hello World</h1><p>Conversion HTML directe.</p></body></html>"
+              css: "body { font-family: Arial; }"
+              options:
+                paper_size: a4
+                margins:
+                  top: "1cm"
+                  bottom: "1cm"
+                  left: "2cm"
+                  right: "2cm"
+              client_id: "client-123"
+              pdf_name: "page-html"
+      responses:
+        "200":
+          description: PDF généré avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ───────────────────────────────────────────────
+  # Preview  (→ PNG)
+  # ───────────────────────────────────────────────
+  /api/preview:
+    post:
+      tags: [Preview]
+      summary: Génération de preview PNG (première page)
+      description: |
+        Génère un PDF à partir de l'un des trois modes d'entrée, puis retourne
+        une image PNG de la première page (150 DPI).
+
+        **Modes d'entrée** (mutuellement exclusifs, par ordre de priorité) :
+        1. `markdown` — conversion Markdown → PDF → PNG
+        2. `template` + `data` — rendu Tera → PDF → PNG
+        3. `html` — HTML → PDF → PNG
+
+        Retourne toujours `image/png`, jamais de JSON.
+      operationId: preview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewRequest"
+            examples:
+              markdown:
+                summary: Preview d'un document Markdown
+                value:
+                  markdown: "# Aperçu\n\nTexte de test."
+              html:
+                summary: Preview d'un HTML
+                value:
+                  html: "<html><body><h1>Preview HTML</h1></body></html>"
+              template:
+                summary: Preview d'un template Tera
+                value:
+                  template: "<h1>{{ title }}</h1>"
+                  data:
+                    title: "Mon titre"
+      responses:
+        "200":
+          description: Image PNG de la première page
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ───────────────────────────────────────────────
+  # Merge
+  # ───────────────────────────────────────────────
+  /api/merge:
+    post:
+      tags: [Merge]
+      summary: Fusionner plusieurs PDFs
+      description: |
+        Fusionne N fichiers PDF précédemment sauvegardés en un seul document.
+
+        Les chemins PDF doivent être des URLs de type `/download/{client_id}/{pdf_name}`.
+        Minimum **2 PDFs** requis.
+
+        Si `client_id` et `pdf_name` ne sont pas fournis, le PDF fusionné est
+        automatiquement sauvegardé sous `client_id=temp` avec un nom UUID.
+      operationId: merge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergeRequest"
+            example:
+              pdfs:
+                - "/download/client-123/doc1.pdf"
+                - "/download/client-123/doc2.pdf"
+              client_id: "client-123"
+              pdf_name: "merged-doc"
+      responses:
+        "200":
+          description: PDF fusionné
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+              example:
+                download_url: "/download/client-123/merged-doc.pdf"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ───────────────────────────────────────────────
+  # Watermark
+  # ───────────────────────────────────────────────
+  /api/watermark:
+    post:
+      tags: [Watermark]
+      summary: Ajouter un watermark texte
+      description: |
+        Ajoute un watermark texte semi-transparent en overlay sur un PDF existant.
+
+        Le PDF source doit être référencé via son chemin `/download/…`.
+      operationId: watermark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatermarkRequest"
+            example:
+              pdf: "/download/client-123/rapport.pdf"
+              text: "BROUILLON"
+              opacity: 0.1
+              angle: -45
+              client_id: "client-123"
+              pdf_name: "rapport-watermarked"
+      responses:
+        "200":
+          description: PDF avec watermark
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ───────────────────────────────────────────────
+  # Protect
+  # ───────────────────────────────────────────────
+  /api/protect:
+    post:
+      tags: [Protect]
+      summary: Protéger un PDF par mot de passe
+      description: |
+        Chiffre un PDF existant avec un mot de passe (AES 256 bits via qpdf).
+
+        Le PDF source doit être référencé via son chemin `/download/…`.
+      operationId: protect
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProtectRequest"
+            example:
+              pdf: "/download/client-123/rapport.pdf"
+              password: "secret123"
+              client_id: "client-123"
+              pdf_name: "rapport-protege"
+      responses:
+        "200":
+          description: PDF protégé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ───────────────────────────────────────────────
+  # Download
+  # ───────────────────────────────────────────────
+  /download/{client_id}/{pdf_name}:
+    get:
+      tags: [Download]
+      summary: Télécharger un PDF sauvegardé
+      description: |
+        Télécharge un fichier PDF précédemment sauvegardé sur le serveur.
+        Le header `Content-Disposition` force le téléchargement.
+      operationId: downloadPdf
+      parameters:
+        - name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identifiant du client
+          example: "client-123"
+        - name: pdf_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Nom du fichier PDF
+          example: "rapport-2024.pdf"
+      responses:
+        "200":
+          description: Fichier PDF
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              example: 'attachment; filename="rapport-2024.pdf"'
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Fichier non trouvé
+
+  # ───────────────────────────────────────────────
+  # Legacy  (POST / FormData)
+  # ───────────────────────────────────────────────
+  /:
+    post:
+      tags: [Legacy]
+      summary: "[Legacy] Markdown → PDF (FormData)"
+      description: |
+        Endpoint original de conversion Markdown → PDF, conservé pour
+        la compatibilité ascendante. Utilise `application/x-www-form-urlencoded`
+        ou `multipart/form-data`.
+
+        **Pour les nouvelles intégrations, préférez `/api/convert`.**
+      operationId: legacyConvert
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/LegacyConvertForm"
+            example:
+              markdown: "# Hello World"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/LegacyConvertForm"
+      responses:
+        "200":
+          description: PDF généré
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Erreur pandoc
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Erreur interne
+
+# ═══════════════════════════════════════════════
+# Components
+# ═══════════════════════════════════════════════
+components:
+
+  # ─── Schemas ──────────────────────────────────
+  schemas:
+
+    PdfEngine:
+      type: string
+      enum: [weasyprint, wkhtmltopdf, pdflatex]
+      default: weasyprint
+      description: Moteur PDF utilisé par pandoc
+
+    PaperSize:
+      type: string
+      enum: [a4, a3, letter]
+      default: a4
+
+    Orientation:
+      type: string
+      enum: [portrait, landscape]
+      default: portrait
+
+    Margins:
+      type: object
+      description: Marges de la page (valeurs CSS, ex. "2cm", "1in", "20mm")
+      properties:
+        top:
+          type: string
+          example: "2cm"
+        bottom:
+          type: string
+          example: "2cm"
+        left:
+          type: string
+          example: "2cm"
+        right:
+          type: string
+          example: "2cm"
+
+    PdfOptions:
+      type: object
+      description: Options de rendu PDF communes à tous les endpoints de génération
+      properties:
+        paper_size:
+          $ref: "#/components/schemas/PaperSize"
+        orientation:
+          $ref: "#/components/schemas/Orientation"
+        margins:
+          $ref: "#/components/schemas/Margins"
+        page_numbers:
+          type: boolean
+          default: false
+          description: Afficher les numéros de page en bas de chaque page
+        page_number_format:
+          type: string
+          default: "counter(page)"
+          description: Format CSS du numéro de page (ex. `counter(page) "/" counter(pages)`)
+        toc:
+          type: boolean
+          default: false
+          description: Générer une table des matières (pandoc uniquement)
+        toc_depth:
+          type: integer
+          minimum: 1
+          maximum: 6
+          description: Profondeur de la table des matières
+        watermark:
+          type: string
+          description: Texte de watermark léger appliqué via CSS
+
+    ConvertRequest:
+      type: object
+      required: [markdown]
+      properties:
+        markdown:
+          type: string
+          description: Contenu Markdown à convertir. Supporte les tags CENSOR.
+        css:
+          type: string
+          description: CSS additionnel (ajouté après le CSS par défaut)
+        engine:
+          $ref: "#/components/schemas/PdfEngine"
+        options:
+          $ref: "#/components/schemas/PdfOptions"
+        header_html:
+          type: string
+          description: HTML inline pour le header (prioritaire sur header_template)
+        footer_html:
+          type: string
+          description: HTML inline pour le footer (prioritaire sur footer_template)
+        header_template:
+          type: string
+          description: Nom du fichier template header (dans le dossier templates/)
+        footer_template:
+          type: string
+          description: Nom du fichier template footer (dans le dossier templates/)
+        client_id:
+          type: string
+          description: Identifiant client pour sauvegarder le PDF sur le serveur
+        pdf_name:
+          type: string
+          description: Nom du fichier PDF (l'extension .pdf est ajoutée automatiquement)
+
+    RenderRequest:
+      type: object
+      required: [template, data]
+      properties:
+        template:
+          type: string
+          description: Template HTML avec syntaxe Tera (Jinja2-like)
+        data:
+          type: object
+          additionalProperties: true
+          description: Données JSON injectées dans le template. **Doit être un objet.**
+        css:
+          type: string
+          description: CSS additionnel
+        options:
+          $ref: "#/components/schemas/PdfOptions"
+        client_id:
+          type: string
+        pdf_name:
+          type: string
+
+    HtmlToPdfRequest:
+      type: object
+      required: [html]
+      properties:
+        html:
+          type: string
+          description: Contenu HTML complet à convertir
+        css:
+          type: string
+          description: CSS additionnel
+        options:
+          $ref: "#/components/schemas/PdfOptions"
+        client_id:
+          type: string
+        pdf_name:
+          type: string
+
+    PreviewRequest:
+      type: object
+      description: |
+        Fournir **un seul** des modes d'entrée :
+        - `markdown` pour une conversion Markdown
+        - `template` + `data` pour un rendu Tera
+        - `html` pour du HTML direct
+      properties:
+        markdown:
+          type: string
+          description: Contenu Markdown (mode Markdown)
+        html:
+          type: string
+          description: Contenu HTML (mode HTML)
+        template:
+          type: string
+          description: Template Tera (mode Template, requiert `data`)
+        data:
+          type: object
+          additionalProperties: true
+          description: Données JSON pour le template (mode Template)
+        css:
+          type: string
+        engine:
+          $ref: "#/components/schemas/PdfEngine"
+        options:
+          $ref: "#/components/schemas/PdfOptions"
+        header_html:
+          type: string
+        footer_html:
+          type: string
+        header_template:
+          type: string
+        footer_template:
+          type: string
+
+    MergeRequest:
+      type: object
+      required: [pdfs]
+      properties:
+        pdfs:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          description: Liste des chemins PDF à fusionner (format `/download/{client_id}/{name}`)
+          example:
+            - "/download/client-123/doc1.pdf"
+            - "/download/client-123/doc2.pdf"
+        client_id:
+          type: string
+        pdf_name:
+          type: string
+
+    WatermarkRequest:
+      type: object
+      required: [pdf, text]
+      properties:
+        pdf:
+          type: string
+          description: Chemin du PDF source (format `/download/{client_id}/{name}`)
+        text:
+          type: string
+          description: Texte du watermark
+        opacity:
+          type: number
+          format: float
+          default: 0.06
+          minimum: 0
+          maximum: 1
+          description: Opacité du watermark (0 = invisible, 1 = opaque)
+        angle:
+          type: number
+          format: float
+          default: -45
+          description: Angle de rotation du watermark en degrés
+        client_id:
+          type: string
+        pdf_name:
+          type: string
+
+    ProtectRequest:
+      type: object
+      required: [pdf, password]
+      properties:
+        pdf:
+          type: string
+          description: Chemin du PDF source (format `/download/{client_id}/{name}`)
+        password:
+          type: string
+          description: Mot de passe pour le chiffrement AES-256
+        client_id:
+          type: string
+        pdf_name:
+          type: string
+
+    LegacyConvertForm:
+      type: object
+      required: [markdown]
+      properties:
+        markdown:
+          type: string
+          description: Contenu Markdown
+        css:
+          type: string
+          description: CSS additionnel
+        engine:
+          $ref: "#/components/schemas/PdfEngine"
+        header_template:
+          type: string
+          description: Nom du fichier template header
+        footer_template:
+          type: string
+          description: Nom du fichier template footer
+        client_id:
+          type: string
+        pdf_name:
+          type: string
+
+    ConvertResponse:
+      type: object
+      properties:
+        download_url:
+          type: string
+          description: URL relative pour télécharger le PDF généré
+          example: "/download/client-123/rapport-2024.pdf"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        version:
+          type: string
+          example: "0.1.0"
+        engines:
+          type: array
+          items:
+            type: string
+          example: ["weasyprint", "wkhtmltopdf", "pdflatex"]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Type d'erreur
+          example: "Bad request"
+        details:
+          type: string
+          description: Détails / message d'erreur
+          example: "At least 2 PDFs are required for merging"
+
+  # ─── Responses réutilisables ──────────────────
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Bad request"
+            details: "\"data\" must be a JSON object"
+
+    NotFound:
+      description: Ressource non trouvée
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Not found"
+            details: "PDF not found: /download/client-123/missing.pdf"
+
+    InternalError:
+      description: Erreur interne du serveur
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Pandoc conversion failed"
+            details: "pandoc: ... (stderr output)"
