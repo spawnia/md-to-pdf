@@ -6,7 +6,7 @@ on:
       - master
 
 concurrency:
-  group: deploy-fly-io-production
+  group: deploy
   cancel-in-progress: false
 
 env:
@@ -24,4 +24,4 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to fly.io
-        run: flyctl deploy --lease-timeout 120s --wait-timeout 600s
+        run: flyctl deploy --lease-timeout=120s --wait-timeout=600s
