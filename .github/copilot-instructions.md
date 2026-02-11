@@ -3,14 +3,14 @@
 ## Project Overview
 
 This is a web service that converts Markdown to PDF using:
-- **Language**: Rust (edition 2021)
+- **Language**: Rust (2021 edition)
 - **Web Framework**: Rocket 0.5
 - **PDF Conversion**: Pandoc with multiple engines (weasyprint, wkhtmltopdf, pdflatex)
 - **Deployment**: Docker containers
 
 ## Tech Stack
 
-- Rust 2021 edition
+- Rust
 - Rocket web framework
 - rocket_cors for CORS support
 - tempfile for temporary file handling
