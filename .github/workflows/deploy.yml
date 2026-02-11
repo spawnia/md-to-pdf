@@ -24,4 +24,4 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to fly.io
-        run: flyctl deploy --lease-timeout 120s --wait-timeout 600
+        run: flyctl deploy --lease-timeout 120s --wait-timeout 600s
