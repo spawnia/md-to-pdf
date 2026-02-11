@@ -6,7 +6,7 @@ on:
       - master
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: deploy-fly-io-production
   cancel-in-progress: false
 
 env:
