@@ -2,6 +2,10 @@
 
 A web service for converting Markdown to PDF
 
+## Sponsors
+
+If you make money using this project, please consider sponsoring [its maintainer on GitHub Sponsors](https://github.com/sponsors/spawnia).
+
 ## Web UI
 
 For quick experimentation, you can use [the web version](https://md-to-pdf.fly.dev) hosted on [Fly.io](https://fly.io).
@@ -54,6 +58,3 @@ ROCKET_LIMITS={form="1MiB"}
 - [Pandoc - a universal document converter](https://pandoc.org)
 - [Codemirror - a text editor for the browser](https://codemirror.net)
 
-## Sponsors
-
-If md-to-pdf is useful to you, consider [sponsoring its development](https://github.com/sponsors/spawnia).
