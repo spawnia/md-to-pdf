@@ -1,5 +1,5 @@
 dcrust=$$( [ -f /.dockerenv ] && echo "" || echo "docker compose run --rm rust")
-dcpandoc=$$( [ -f /.dockerenv ] && echo "" || echo "docker compose run --rm pandoc")
+dcpandoc=$$( [ -f /.dockerenv ] && echo "" || echo "docker compose run --rm --service-ports pandoc")
 
 .PHONY: it
 it: fmt target/debug test ## Perform common targets
