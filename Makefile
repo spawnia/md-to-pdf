@@ -1,5 +1,5 @@
-dcrust=$$( [ -f /.dockerenv ] && echo "" || echo "docker-compose exec rust")
-dcpandoc=$$( [ -f /.dockerenv ] && echo "" || echo "docker-compose exec pandoc")
+dcrust=$$( [ -f /.dockerenv ] && echo "" || echo "docker compose run --rm rust")
+dcpandoc=$$( [ -f /.dockerenv ] && echo "" || echo "docker compose run --rm pandoc")
 
 .PHONY: it
 it: fmt target/debug test ## Perform common targets
@@ -13,33 +13,29 @@ setup: dc-build cargo-deps ## Set up the local environment
 
 .PHONY: dc-build
 dc-build: ## Build the local dev image
-	docker-compose build --pull
-
-.PHONY: up
-up: ## Bring up the containers
-	[ -f /.dockerenv ] || docker-compose up --detach
+	docker compose build --pull
 
 .PHONY: cargo-deps
-cargo-deps: up ## Reinstall cargo dependencies
+cargo-deps: ## Reinstall cargo dependencies
 	${dcrust} cargo update
 
-target/debug: up src ## Compile
+target/debug: src ## Compile
 	${dcrust} cargo build
 
 .PHONY: rust
-rust: up ## Enter an interactive shell into the rust container
+rust: ## Enter an interactive shell into the rust container
 	${dcrust} bash
 
 .PHONY: pandoc
-pandoc: up ## Enter an interactive shell into the pandoc container
+pandoc: ## Enter an interactive shell into the pandoc container
 	${dcpandoc} bash
 
 .PHONY: serve
-serve: up target/debug ## Serve the compiled application
+serve: target/debug ## Serve the compiled application
 	${dcpandoc} target/debug/md-to-pdf
 
 .PHONY: fmt
-fmt: up ## Format the rust code
+fmt: ## Format the rust code
 	${dcrust} cargo fmt
 
 .PHONY: docker-build
